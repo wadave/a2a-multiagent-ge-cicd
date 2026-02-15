@@ -97,11 +97,9 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Cocktail Agent Prod" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
           --entrypoint-class=CocktailAgentExecutor \
-          --extra-packages=src/a2a_agents/common/ \
-          --extra-packages=src/a2a_agents/cocktail_agent/ \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
@@ -111,11 +109,9 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Weather Agent Prod" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
           --entrypoint-class=WeatherAgentExecutor \
-          --extra-packages=src/a2a_agents/common/ \
-          --extra-packages=src/a2a_agents/weather_agent/ \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
@@ -132,11 +128,9 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Hosting Agent Prod" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
           --entrypoint-class=HostingAgentExecutor \
-          --extra-packages=src/a2a_agents/common/ \
-          --extra-packages=src/a2a_agents/hosting_agent/ \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
