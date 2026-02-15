@@ -1,63 +1,61 @@
 steps:
-  # 1. Build and push the Cocktail MCP Server
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}', './src/mcp_servers/cocktail_mcp_server']
-    id: 'build-cocktail-mcp'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}']
-    id: 'push-cocktail-mcp'
-    waitFor: ['build-cocktail-mcp']
-
-  # 2. Deploy the Cocktail MCP Server to Cloud Run
+  # 1. Build and deploy the Cocktail MCP Server (skip if already deployed with this commit)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'deploy'
-      - 'cocktail-mcp-staging'
-      - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}'
-      - '--region'
-      - '${_REGION}'
-      - '--service-account'
-      - '${_APP_SERVICE_ACCOUNT_STAGING}'
-      - '--no-allow-unauthenticated'
-      - '--set-env-vars'
-      - 'PROJECT_ID=${PROJECT_ID}'
     id: 'deploy-cocktail-mcp'
-    waitFor: ['push-cocktail-mcp']
-
-  # 3. Build and push the Weather MCP Server
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}', './src/mcp_servers/weather_mcp_server']
-    id: 'build-weather-mcp'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}']
-    id: 'push-weather-mcp'
-    waitFor: ['build-weather-mcp']
-
-  # 4. Deploy the Weather MCP Server to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - 'run'
-      - 'deploy'
-      - 'weather-mcp-staging'
-      - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}'
-      - '--region'
-      - '${_REGION}'
-      - '--service-account'
-      - '${_APP_SERVICE_ACCOUNT_STAGING}'
-      - '--no-allow-unauthenticated'
-      - '--set-env-vars'
-      - 'PROJECT_ID=${PROJECT_ID}'
-    id: 'deploy-weather-mcp'
-    waitFor: ['push-weather-mcp']
+      - '-c'
+      - |
+        set -e
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}"
 
-  # 5. Extract Cloud Run URLs to pass to Agents
+        # Check if the service is already running this image
+        CURRENT_IMAGE=$$(gcloud run services describe cocktail-mcp-staging \
+          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
+
+        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
+          echo "Cocktail MCP already deployed with commit ${COMMIT_SHA}, skipping."
+        else
+          echo "Building and deploying Cocktail MCP Server..."
+          docker build -t $$IMAGE ./src/mcp_servers/cocktail_mcp_server
+          docker push $$IMAGE
+          gcloud run deploy cocktail-mcp-staging \
+            --image $$IMAGE \
+            --region ${_REGION} \
+            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+            --no-allow-unauthenticated \
+            --set-env-vars "PROJECT_ID=${PROJECT_ID}"
+        fi
+
+  # 2. Build and deploy the Weather MCP Server (skip if already deployed with this commit)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-weather-mcp'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -e
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}"
+
+        # Check if the service is already running this image
+        CURRENT_IMAGE=$$(gcloud run services describe weather-mcp-staging \
+          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
+
+        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
+          echo "Weather MCP already deployed with commit ${COMMIT_SHA}, skipping."
+        else
+          echo "Building and deploying Weather MCP Server..."
+          docker build -t $$IMAGE ./src/mcp_servers/weather_mcp_server
+          docker push $$IMAGE
+          gcloud run deploy weather-mcp-staging \
+            --image $$IMAGE \
+            --region ${_REGION} \
+            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+            --no-allow-unauthenticated \
+            --set-env-vars "PROJECT_ID=${PROJECT_ID}"
+        fi
+
+  # 3. Extract Cloud Run URLs to pass to Agents
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -68,7 +66,7 @@ steps:
     id: 'get-mcp-urls'
     waitFor: ['deploy-cocktail-mcp', 'deploy-weather-mcp']
 
-  # 6. Deploy the Agent Engine Apps
+  # 4. Install Python dependencies
   - name: "python:3.12-slim"
     id: install-dependencies
     entrypoint: /bin/bash
@@ -81,6 +79,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['get-mcp-urls']
 
+  # 5. Deploy the Agent Engine Apps (skip if already deployed with this commit)
   - name: "python:3.12-slim"
     id: deploy-agents
     entrypoint: /bin/bash
@@ -88,55 +87,89 @@ steps:
       - "-c"
       - |
         set -e
-        mkdir -p app_bundle
-        cp -r src/a2a_agents app_bundle/
-        uv export --project ./src/a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > app_bundle/requirements.txt
+        uv export --project ./src/a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > src/requirements.txt
         COCKTAIL_URL=$$(cat /workspace/cocktail_url.txt)
         WEATHER_URL=$$(cat /workspace/weather_url.txt)
-        
+
+        # Helper: check if agent is already deployed with this COMMIT_SHA
+        agent_needs_deploy() {
+          local display_name="$$1"
+          local agent_id=$$(gcloud ai agents list \
+            --project ${_STAGING_PROJECT_ID} --region ${_REGION} \
+            --format="value(name)" --filter="displayName='$$display_name'" 2>/dev/null | head -n 1)
+
+          if [ -z "$$agent_id" ]; then
+            echo "true"
+            return
+          fi
+
+          # Check COMMIT_SHA env var on the deployed agent
+          local deployed_sha=$$(gcloud ai agents describe $$agent_id \
+            --project ${_STAGING_PROJECT_ID} --region ${_REGION} \
+            --format="value(spec.deploymentSpec.dedicatedResources.envVars.COMMIT_SHA)" 2>/dev/null || echo "")
+
+          if [ "$$deployed_sha" = "${COMMIT_SHA}" ]; then
+            echo "false"
+          else
+            echo "true"
+          fi
+        }
+
         # Deploy Cocktail Agent
-        UV_COCKTAIL_OUTPUT=$$(uv run python -m scripts.deploy_agent \
-          --project ${_STAGING_PROJECT_ID} \
-          --location ${_REGION} \
-          --display-name "Cocktail Agent Staging" \
-          --source-packages=app_bundle \
-          --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
-          --entrypoint-class=CocktailAgentExecutor \
-          --requirements-file=app_bundle/requirements.txt \
-          --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
-        
+        if [ "$$(agent_needs_deploy 'Cocktail Agent Staging')" = "true" ]; then
+          echo "Deploying Cocktail Agent..."
+          UV_COCKTAIL_OUTPUT=$$(uv run python -m scripts.deploy_agent \
+            --project ${_STAGING_PROJECT_ID} \
+            --location ${_REGION} \
+            --display-name "Cocktail Agent Staging" \
+            --source-packages=src/a2a_agents \
+            --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
+            --entrypoint-class=CocktailAgentExecutor \
+            --requirements-file=src/requirements.txt \
+            --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
+            --set-env-vars="CT_MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
+        else
+          echo "Cocktail Agent already deployed with commit ${COMMIT_SHA}, skipping."
+        fi
+
         # Deploy Weather Agent
-        UV_WEATHER_OUTPUT=$$(uv run python -m scripts.deploy_agent \
-          --project ${_STAGING_PROJECT_ID} \
-          --location ${_REGION} \
-          --display-name "Weather Agent Staging" \
-          --source-packages=app_bundle \
-          --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
-          --entrypoint-class=WeatherAgentExecutor \
-          --requirements-file=app_bundle/requirements.txt \
-          --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
-          
-        # Extract Agent Engine IDs using gcloud or from stdout of the deploy script
-        # The deploy_agent.py script prints out the playground URL containing the ID
-        
+        if [ "$$(agent_needs_deploy 'Weather Agent Staging')" = "true" ]; then
+          echo "Deploying Weather Agent..."
+          UV_WEATHER_OUTPUT=$$(uv run python -m scripts.deploy_agent \
+            --project ${_STAGING_PROJECT_ID} \
+            --location ${_REGION} \
+            --display-name "Weather Agent Staging" \
+            --source-packages=src/a2a_agents \
+            --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
+            --entrypoint-class=WeatherAgentExecutor \
+            --requirements-file=src/requirements.txt \
+            --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
+            --set-env-vars="WEA_MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
+        else
+          echo "Weather Agent already deployed with commit ${COMMIT_SHA}, skipping."
+        fi
+
+        # Get Agent Engine IDs (needed for Hosting Agent and Frontend)
         COCKTAIL_AGENT_ID=$$(gcloud ai agents list --project ${_STAGING_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Cocktail Agent Staging'" | head -n 1)
         WEATHER_AGENT_ID=$$(gcloud ai agents list --project ${_STAGING_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Weather Agent Staging'" | head -n 1)
-        
+
         # Deploy Hosting Agent
-        echo "Deploying Hosting Agent with Cocktail Agent: $${COCKTAIL_AGENT_ID} and Weather Agent: $${WEATHER_AGENT_ID}"
-        uv run python -m scripts.deploy_agent \
-          --project ${_STAGING_PROJECT_ID} \
-          --location ${_REGION} \
-          --display-name "Hosting Agent Staging" \
-          --source-packages=app_bundle \
-          --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
-          --entrypoint-class=HostingAgentExecutor \
-          --requirements-file=app_bundle/requirements.txt \
-          --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
-          
+        if [ "$$(agent_needs_deploy 'Hosting Agent Staging')" = "true" ]; then
+          echo "Deploying Hosting Agent with Cocktail Agent: $${COCKTAIL_AGENT_ID} and Weather Agent: $${WEATHER_AGENT_ID}"
+          uv run python -m scripts.deploy_agent \
+            --project ${_STAGING_PROJECT_ID} \
+            --location ${_REGION} \
+            --display-name "Hosting Agent Staging" \
+            --source-packages=src/a2a_agents \
+            --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
+            --entrypoint-class=HostingAgentExecutor \
+            --requirements-file=src/requirements.txt \
+            --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
+            --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
+        else
+          echo "Hosting Agent already deployed with commit ${COMMIT_SHA}, skipping."
+        fi
+
         HOSTING_AGENT_ID=$$(gcloud ai agents list --project ${_STAGING_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Staging'" | head -n 1)
         echo "$${HOSTING_AGENT_ID}" > /workspace/hosting_agent_id.txt
 
@@ -145,52 +178,54 @@ steps:
       - 'PYTHONPATH=/workspace/src'
     waitFor: ['install-dependencies']
 
-  # 7. Build and push the Frontend
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}', './src/frontend']
-    id: 'build-frontend'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}']
-    id: 'push-frontend'
-    waitFor: ['build-frontend']
-
-  # 8. Deploy the Frontend to Cloud Run
+  # 6. Build and deploy the Frontend (skip if already deployed with this commit)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-frontend'
     entrypoint: bash
     args:
       - '-c'
       - |
-        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
-        gcloud run deploy frontend-staging \
-          --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA} \
-          --region ${_REGION} \
-          --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
-          --allow-unauthenticated \
-          --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},LOCATION=${_REGION},HOSTING_AGENT_NAME=$${HOSTING_AGENT_ID}"
-    id: 'deploy-frontend'
-    waitFor: ['push-frontend', 'deploy-agents']
+        set -e
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
-  # 9. Register the Agent to Gemini Enterprise Agentspace
+        # Check if the service is already running this image
+        CURRENT_IMAGE=$$(gcloud run services describe frontend-staging \
+          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
+
+        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
+
+        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
+          echo "Frontend already deployed with commit ${COMMIT_SHA}, skipping."
+        else
+          echo "Building and deploying Frontend..."
+          docker build -t $$IMAGE ./src/frontend
+          docker push $$IMAGE
+          gcloud run deploy frontend-staging \
+            --image $$IMAGE \
+            --region ${_REGION} \
+            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+            --allow-unauthenticated \
+            --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},LOCATION=${_REGION},HOSTING_AGENT_NAME=$${HOSTING_AGENT_ID}"
+        fi
+    waitFor: ['deploy-agents']
+
+  # 7. Register the Agent to Gemini Enterprise Agentspace
   - name: "python:3.12-slim"
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
-        # Ensure gcloud is available and authorized if needed
         apt-get update && apt-get install -y curl apt-transport-https ca-certificates gnupg
         curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
         echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
         apt-get update && apt-get install -y google-cloud-cli
-        
-        # Install dependencies for requests
+
         pip install requests
-        
+
         HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
         HOSTING_URL="https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${HOSTING_AGENT_ID}/environments/default"
-        
-        # NOTE: Make sure _AS_APP, _PROJECT_NUMBER, and _AUTH_ID are configured in substitutions
+
         python scripts/register_agent_to_agentspace.py \
           --project-number=${_PROJECT_NUMBER} \
           --app-id=${_AS_APP} \
@@ -205,7 +240,6 @@ steps:
 substitutions:
   _STAGING_PROJECT_ID: dw-genai-dev
   _REGION: us-central1
-  # These must be configured for the Agentspace Registration to succeed:
   _PROJECT_NUMBER: YOUR_PROJECT_NUMBER
   _AS_APP: YOUR_AGENT_SPACE_APP_ID
   _AUTH_ID: YOUR_OAUTH_CLIENT_ID
