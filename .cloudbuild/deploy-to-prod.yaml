@@ -91,7 +91,7 @@ steps:
         WEATHER_URL=$(cat /workspace/weather_url.txt)
         
         # Deploy Cocktail Agent
-        UV_COCKTAIL_OUTPUT=$(uv run python -m scripts.deploy_agent \
+        UV_COCKTAIL_OUTPUT=$$(uv run python -m scripts.deploy_agent \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Cocktail Agent Prod" \
@@ -100,10 +100,10 @@ steps:
           --entrypoint-object=agent \
           --requirements-file=requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-          --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$UV_COCKTAIL_OUTPUT"; exit 1; }
+          --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
         
         # Deploy Weather Agent
-        UV_WEATHER_OUTPUT=$(uv run python -m scripts.deploy_agent \
+        UV_WEATHER_OUTPUT=$$(uv run python -m scripts.deploy_agent \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Weather Agent Prod" \
@@ -112,13 +112,13 @@ steps:
           --entrypoint-object=agent \
           --requirements-file=requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-          --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$UV_WEATHER_OUTPUT"; exit 1; }
+          --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
           
         # Extract Agent Engine IDs using gcloud or from stdout of the deploy script
         # The deploy_agent.py script prints out the playground URL containing the ID
         
-        COCKTAIL_AGENT_ID=$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Cocktail Agent Prod'" | head -n 1)
-        WEATHER_AGENT_ID=$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Weather Agent Prod'" | head -n 1)
+        COCKTAIL_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Cocktail Agent Prod'" | head -n 1)
+        WEATHER_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Weather Agent Prod'" | head -n 1)
         
         # Deploy Hosting Agent
         echo "Deploying Hosting Agent with Cocktail Agent: $${COCKTAIL_AGENT_ID} and Weather Agent: $${WEATHER_AGENT_ID}"
@@ -133,11 +133,12 @@ steps:
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="WEATHER_AGENT_NAME=$${WEATHER_AGENT_ID},COCKTAIL_AGENT_NAME=$${COCKTAIL_AGENT_ID},COMMIT_SHA=${COMMIT_SHA}" || exit 1
           
-        HOSTING_AGENT_ID=$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Prod'" | head -n 1)
+        HOSTING_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Prod'" | head -n 1)
         echo "$${HOSTING_AGENT_ID}" > /workspace/hosting_agent_id.txt
 
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
+      - 'PYTHONPATH=/workspace/a2a_agents'
     waitFor: ['install-dependencies']
 
   # 7. Build and push the Frontend
@@ -156,7 +157,7 @@ steps:
     args:
       - '-c'
       - |
-        HOSTING_AGENT_ID=$(cat /workspace/hosting_agent_id.txt)
+        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
         gcloud run deploy frontend-prod \
           --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA} \
           --region ${_REGION} \
