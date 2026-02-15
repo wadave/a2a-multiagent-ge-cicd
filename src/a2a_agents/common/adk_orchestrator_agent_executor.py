@@ -36,8 +36,8 @@ from a2a.types import (
 from a2a.utils import new_agent_text_message
 from a2a.utils.errors import ServerError
 
-from common.adk_orchestrator_agent import get_orchestrator_agent
-from common.auth_utils import GoogleAuth
+from a2a_agents.common.adk_orchestrator_agent import get_orchestrator_agent
+from a2a_agents.common.auth_utils import GoogleAuth
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)

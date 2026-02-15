@@ -132,10 +132,11 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Hosting Agent Prod" \
-          --source-packages=src/hosting_agent \
-          --entrypoint-module=hosting_agent.agent_executor \
+          --source-packages=src/a2a_agents \
+          --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
           --entrypoint-class=HostingAgentExecutor \
-          --extra-packages=src/hosting_agent/ \
+          --extra-packages=src/a2a_agents/common/ \
+          --extra-packages=src/a2a_agents/hosting_agent/ \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="WEATHER_AGENT_NAME=$${WEATHER_AGENT_ID},COCKTAIL_AGENT_NAME=$${COCKTAIL_AGENT_ID},COMMIT_SHA=${COMMIT_SHA}" || exit 1
