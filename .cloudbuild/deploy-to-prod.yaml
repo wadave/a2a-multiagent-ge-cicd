@@ -1,12 +1,13 @@
 steps:
   # 1. Build and deploy the Cocktail MCP Server (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-cocktail-mcp'
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
+        apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}"
 
         # Check if the service is already running this image
@@ -28,13 +29,14 @@ steps:
         fi
 
   # 2. Build and deploy the Weather MCP Server (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-weather-mcp'
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
+        apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}"
 
         # Check if the service is already running this image
@@ -56,7 +58,7 @@ steps:
         fi
 
   # 3. Extract Cloud Run URLs to pass to Agents
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     entrypoint: bash
     args:
       - '-c'
@@ -118,14 +120,14 @@ steps:
         # Deploy Cocktail Agent
         if [ "$$(agent_needs_deploy 'Cocktail Agent Prod')" = "true" ]; then
           echo "Deploying Cocktail Agent..."
-          UV_COCKTAIL_OUTPUT=$$(uv run python -m scripts.deploy_agent \
+          UV_COCKTAIL_OUTPUT=$$(cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
             --project ${_PROD_PROJECT_ID} \
             --location ${_REGION} \
             --display-name "Cocktail Agent Prod" \
-            --source-packages=src \
+            --source-packages=a2a_agents \
             --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
             --entrypoint-class=CocktailAgentExecutor \
-            --requirements-file=src/requirements.txt \
+            --requirements-file=requirements.txt \
             --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
             --set-env-vars="CT_MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
         else
@@ -135,14 +137,14 @@ steps:
         # Deploy Weather Agent
         if [ "$$(agent_needs_deploy 'Weather Agent Prod')" = "true" ]; then
           echo "Deploying Weather Agent..."
-          UV_WEATHER_OUTPUT=$$(uv run python -m scripts.deploy_agent \
+          UV_WEATHER_OUTPUT=$$(cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
             --project ${_PROD_PROJECT_ID} \
             --location ${_REGION} \
             --display-name "Weather Agent Prod" \
-            --source-packages=src \
+            --source-packages=a2a_agents \
             --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
             --entrypoint-class=WeatherAgentExecutor \
-            --requirements-file=src/requirements.txt \
+            --requirements-file=requirements.txt \
             --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
             --set-env-vars="WEA_MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
         else
@@ -156,16 +158,16 @@ steps:
         # Deploy Hosting Agent
         if [ "$$(agent_needs_deploy 'Hosting Agent Prod')" = "true" ]; then
           echo "Deploying Hosting Agent with Cocktail Agent: $${COCKTAIL_AGENT_ID} and Weather Agent: $${WEATHER_AGENT_ID}"
-          uv run python -m scripts.deploy_agent \
+          (cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
             --project ${_PROD_PROJECT_ID} \
             --location ${_REGION} \
             --display-name "Hosting Agent Prod" \
-            --source-packages=src \
+            --source-packages=a2a_agents \
             --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
             --entrypoint-class=HostingAgentExecutor \
-            --requirements-file=src/requirements.txt \
+            --requirements-file=requirements.txt \
             --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-            --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
+            --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}") || exit 1
         else
           echo "Hosting Agent already deployed with commit ${COMMIT_SHA}, skipping."
         fi
@@ -179,13 +181,14 @@ steps:
     waitFor: ['install-dependencies']
 
   # 6. Build and deploy the Frontend (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-frontend'
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
+        apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
         # Check if the service is already running this image
