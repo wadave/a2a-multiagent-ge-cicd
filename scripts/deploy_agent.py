@@ -205,6 +205,12 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
     help="Name of the agent class to instantiate at module level",
 )
 @click.option(
+    "--extra-packages",
+    multiple=True,
+    default=[],
+    help="Local Python directories to bundle. Can be specified multiple times.",
+)
+@click.option(
     "--requirements-file",
     default="app/app_utils/.requirements.txt",
     help="Path to requirements.txt file",
@@ -278,6 +284,7 @@ def deploy_agent_engine_app(
     entrypoint_module: str,
     entrypoint_object: str,
     entrypoint_class: str | None,
+    extra_packages: tuple[str, ...],
     requirements_file: str,
     set_env_vars: str | None,
     set_secrets: str | None,
@@ -347,6 +354,7 @@ def deploy_agent_engine_app(
             click.echo(f"  {key}: {format_env_value(value)}")
 
     source_packages_list = list(source_packages)
+    extra_packages_list = list(extra_packages) if extra_packages else None
 
     # Initialize vertexai client
     # Use v1beta1 API when agent identity is enabled (required for identity_type)
@@ -395,6 +403,7 @@ def deploy_agent_engine_app(
         env_vars=env_vars,
         service_account=service_account,
         requirements_file=requirements_file,
+        extra_packages=extra_packages_list,
         labels=labels_dict,
         min_instances=min_instances,
         max_instances=max_instances,

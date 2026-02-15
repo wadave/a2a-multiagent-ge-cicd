@@ -17,17 +17,17 @@ import logging
 from typing import Dict
 from dotenv import load_dotenv
 
-from a2a_agents.common.agent_configs import WEATHER_AGENT_CONFIG
-from a2a_agents.common.adk_base_mcp_agent_executor import AdkBaseMcpAgentExecutor
+from common.agent_configs import COCKTAIL_AGENT_CONFIG
+from common.adk_base_mcp_agent_executor import AdkBaseMcpAgentExecutor
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
 
 
-class WeatherAgentExecutor(AdkBaseMcpAgentExecutor):
-    """Agent Executor for weather-related queries using MCP tools."""
+class CocktailAgentExecutor(AdkBaseMcpAgentExecutor):
+    """Agent Executor for cocktail-related queries using MCP tools."""
 
     def get_agent_config(self) -> Dict:
-        """Return weather agent configuration."""
-        return WEATHER_AGENT_CONFIG
+        """Return cocktail agent configuration."""
+        return COCKTAIL_AGENT_CONFIG

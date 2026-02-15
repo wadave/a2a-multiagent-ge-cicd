@@ -1,7 +1,7 @@
 steps:
   # 1. Build and push the Cocktail MCP Server
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}', './mcp_servers/cocktail_mcp_server']
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}', './src/mcp_servers/cocktail_mcp_server']
     id: 'build-cocktail-mcp'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -30,7 +30,7 @@ steps:
 
   # 3. Build and push the Weather MCP Server
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}', './mcp_servers/weather_mcp_server']
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}', './src/mcp_servers/weather_mcp_server']
     id: 'build-weather-mcp'
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -88,7 +88,7 @@ steps:
       - "-c"
       - |
         set -e
-        uv export --project ./a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > a2a_agents/requirements.txt
+        uv export --project ./src --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > src/requirements.txt
         COCKTAIL_URL=$$(cat /workspace/cocktail_url.txt)
         WEATHER_URL=$$(cat /workspace/weather_url.txt)
         
@@ -97,10 +97,12 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Cocktail Agent Prod" \
-          --source-packages=a2a_agents \
+          --source-packages=src/a2a_agents \
           --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
           --entrypoint-class=CocktailAgentExecutor \
-          --requirements-file=requirements.txt \
+          --extra-packages=src/a2a_agents/common/ \
+          --extra-packages=src/a2a_agents/cocktail_agent/ \
+          --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
         
@@ -109,10 +111,12 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Weather Agent Prod" \
-          --source-packages=a2a_agents \
+          --source-packages=src/a2a_agents \
           --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
           --entrypoint-class=WeatherAgentExecutor \
-          --requirements-file=requirements.txt \
+          --extra-packages=src/a2a_agents/common/ \
+          --extra-packages=src/a2a_agents/weather_agent/ \
+          --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
           
@@ -128,10 +132,11 @@ steps:
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Hosting Agent Prod" \
-          --source-packages=a2a_agents \
-          --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
+          --source-packages=src/hosting_agent \
+          --entrypoint-module=hosting_agent.agent_executor \
           --entrypoint-class=HostingAgentExecutor \
-          --requirements-file=requirements.txt \
+          --extra-packages=src/hosting_agent/ \
+          --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="WEATHER_AGENT_NAME=$${WEATHER_AGENT_ID},COCKTAIL_AGENT_NAME=$${COCKTAIL_AGENT_ID},COMMIT_SHA=${COMMIT_SHA}" || exit 1
           
@@ -140,12 +145,12 @@ steps:
 
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
-      - 'PYTHONPATH=/workspace/a2a_agents'
+      - 'PYTHONPATH=/workspace/src:/workspace/src/a2a_agents'
     waitFor: ['install-dependencies']
 
   # 7. Build and push the Frontend
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}', './frontend']
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}', './src/frontend']
     id: 'build-frontend'
 
   - name: 'gcr.io/cloud-builders/docker'

@@ -67,7 +67,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a-agents", editable = "a2a_agents" },
+    { name = "a2a-agents" },
     { name = "a2a-sdk", specifier = ">=0.3.5" },
     { name = "google-adk", specifier = ">=1.25.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.113.0" },
