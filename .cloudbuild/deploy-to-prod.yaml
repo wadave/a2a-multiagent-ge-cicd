@@ -86,9 +86,9 @@ steps:
     args:
       - "-c"
       - |
-        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > requirements.txt
-        COCKTAIL_URL=$(cat /workspace/cocktail_url.txt)
-        WEATHER_URL=$(cat /workspace/weather_url.txt)
+        uv export --project ./a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > requirements.txt
+        COCKTAIL_URL=$$(cat /workspace/cocktail_url.txt)
+        WEATHER_URL=$$(cat /workspace/weather_url.txt)
         
         # Deploy Cocktail Agent
         UV_COCKTAIL_OUTPUT=$$(uv run python -m scripts.deploy_agent \
