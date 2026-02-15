@@ -139,7 +139,7 @@ steps:
           --extra-packages=src/a2a_agents/hosting_agent/ \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="WEATHER_AGENT_NAME=$${WEATHER_AGENT_ID},COCKTAIL_AGENT_NAME=$${COCKTAIL_AGENT_ID},COMMIT_SHA=${COMMIT_SHA}" || exit 1
+          --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
           
         HOSTING_AGENT_ID=$$(gcloud ai agents list --project ${_STAGING_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Staging'" | head -n 1)
         echo "$${HOSTING_AGENT_ID}" > /workspace/hosting_agent_id.txt
@@ -175,9 +175,44 @@ steps:
     id: 'deploy-frontend'
     waitFor: ['push-frontend', 'deploy-agents']
 
+  # 9. Register the Agent to Gemini Enterprise Agentspace
+  - name: "python:3.12-slim"
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -e
+        # Ensure gcloud is available and authorized if needed
+        apt-get update && apt-get install -y curl apt-transport-https ca-certificates gnupg
+        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+        apt-get update && apt-get install -y google-cloud-cli
+        
+        # Install dependencies for requests
+        pip install requests
+        
+        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
+        HOSTING_URL="https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${HOSTING_AGENT_ID}/environments/default"
+        
+        # NOTE: Make sure _AS_APP, _PROJECT_NUMBER, and _AUTH_ID are configured in substitutions
+        python scripts/register_agent_to_agentspace.py \
+          --project-number=${_PROJECT_NUMBER} \
+          --app-id=${_AS_APP} \
+          --agent-url="$${HOSTING_URL}" \
+          --agent-name="a2a-agent" \
+          --display-name="A2A Agent Staging" \
+          --description="A2A CI/CD Hosting Agent deployed via Cloud Build" \
+          --auth-id=${_AUTH_ID}
+    id: 'register-agent'
+    waitFor: ['deploy-agents']
+
 substitutions:
   _STAGING_PROJECT_ID: YOUR_STAGING_PROJECT_ID
   _REGION: us-central1
+  # These must be configured for the Agentspace Registration to succeed:
+  _PROJECT_NUMBER: YOUR_PROJECT_NUMBER
+  _AS_APP: YOUR_AGENT_SPACE_APP_ID
+  _AUTH_ID: YOUR_OAUTH_CLIENT_ID
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:
