@@ -48,5 +48,40 @@ locals {
     var.staging_project_id
   ]
 
+  # Agent definitions for the multi-agent architecture
+  agents = {
+    cocktail = {
+      display_name_suffix = "Cocktail Agent"
+      entrypoint_module   = "a2a_agents.cocktail_agent.cocktail_agent_executor"
+      entrypoint_object   = "CocktailAgentExecutor"
+    }
+    weather = {
+      display_name_suffix = "Weather Agent"
+      entrypoint_module   = "a2a_agents.weather_agent.weather_agent_executor"
+      entrypoint_object   = "WeatherAgentExecutor"
+    }
+    hosting = {
+      display_name_suffix = "Hosting Agent"
+      entrypoint_module   = "a2a_agents.hosting_agent.agent_executor"
+      entrypoint_object   = "HostingAgentExecutor"
+    }
+  }
+
+  # Flatten agents x environments into a single map for for_each
+  agent_deployments = {
+    for pair in flatten([
+      for env_key, project_id in local.deploy_project_ids : [
+        for agent_key, agent in local.agents : {
+          key                 = "${env_key}-${agent_key}"
+          env_key             = env_key
+          project_id          = project_id
+          display_name        = "${agent.display_name_suffix} ${title(env_key)}"
+          entrypoint_module   = agent.entrypoint_module
+          entrypoint_object   = agent.entrypoint_object
+        }
+      ]
+    ]) : pair.key => pair
+  }
+
 }
 

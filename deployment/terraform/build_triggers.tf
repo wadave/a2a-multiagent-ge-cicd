@@ -29,14 +29,14 @@ resource "google_cloudbuild_trigger" "pr_checks" {
 
   filename = ".cloudbuild/pr_checks.yaml"
   included_files = [
-    "mcp_servers/**",
-    "a2a_agents/**",
-    "frontend/**",
+    "src/mcp_servers/**",
+    "src/a2a_agents/**",
+    "src/frontend/**",
     "scripts/**",
     "tests/**",
+    ".cloudbuild/**",
     "deployment/**",
     "uv.lock",
-  
   ]
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   depends_on = [
@@ -64,13 +64,14 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
 
   filename = ".cloudbuild/staging.yaml"
   included_files = [
-    "mcp_servers/**",
-    "a2a_agents/**",
-    "frontend/**",
+    "src/mcp_servers/**",
+    "src/a2a_agents/**",
+    "src/frontend/**",
     "scripts/**",
     "tests/**",
+    ".cloudbuild/**",
     "deployment/**",
-    "uv.lock"
+    "uv.lock",
   ]
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {

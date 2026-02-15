@@ -20,17 +20,17 @@ data "google_storage_bucket_object_content" "dummy_source_b64" {
   bucket = "agent-starter-pack"
 }
 
-resource "google_vertex_ai_reasoning_engine" "app" {
-  for_each = local.deploy_project_ids
+resource "google_vertex_ai_reasoning_engine" "agent" {
+  for_each = local.agent_deployments
 
-  display_name = var.project_name
+  display_name = each.value.display_name
   description  = "Agent deployed via Terraform"
   region       = var.region
-  project      = each.value
+  project      = each.value.project_id
 
   spec {
     agent_framework = "google-adk"
-    service_account = google_service_account.app_sa[each.key].email
+    service_account = google_service_account.app_sa[each.value.env_key].email
 
     deployment_spec {
       min_instances         = 1
@@ -40,11 +40,6 @@ resource "google_vertex_ai_reasoning_engine" "app" {
       resource_limits = {
         cpu    = "4"
         memory = "8Gi"
-      }
-
-      env {
-        name  = "LOGS_BUCKET_NAME"
-        value = google_storage_bucket.logs_data_bucket[each.value].name
       }
 
       env {
@@ -64,22 +59,24 @@ resource "google_vertex_ai_reasoning_engine" "app" {
       }
 
       python_spec {
-        entrypoint_module  = "app.agent_engine_app"
-        entrypoint_object  = "agent_engine"
-        requirements_file  = "app/app_utils/.requirements.txt"
-        version            = "3.12"
+        entrypoint_module = each.value.entrypoint_module
+        entrypoint_object = each.value.entrypoint_object
+        requirements_file = "requirements.txt"
+        version           = "3.12"
       }
     }
   }
 
-  # This lifecycle block prevents Terraform from overwriting the source code when it's
-  # updated by Agent Engine deployments outside of Terraform (e.g., via CI/CD pipelines)
+  # Prevent Terraform from overwriting fields managed by CI/CD pipelines.
+  # CI/CD updates source code, env vars, and deployment config after initial creation.
+  # prevent_destroy stops terraform from accidentally deleting when there are no code changes
   lifecycle {
+    prevent_destroy = true
     ignore_changes = [
       spec[0].source_code_spec,
+      spec[0].deployment_spec,
     ]
   }
 
-  # Make dependencies conditional to avoid errors.
   depends_on = [google_project_service.deploy_project_services]
 }

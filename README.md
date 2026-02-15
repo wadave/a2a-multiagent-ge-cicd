@@ -19,18 +19,21 @@ This project consists of 4 core Agent components deployed natively via Python mo
 
 Google Cloud Build triggers from your git actions. Refer to `.cloudbuild/staging.yaml` and `.cloudbuild/deploy-to-prod.yaml` for complete environment configuration.
 
-1. **Build & Deploy MCP Servers:** Deploys FastMCP endpoints on Cloud Run
-2. **Deploy A2A Agents:** Deploys Weather and Cocktail capabilities into Agent Engine
-3. **Deploy Hosting Agent:** Reaps the endpoints from the sub-agents and deploys as the Master Orchestrator
-4. **Deploy Frontend:** Hosts the web portal connected to the Hosting Agent
+1. **Build & Deploy MCP Servers:** Deploys FastMCP endpoints on Cloud Run.
+2. **Deploy A2A Agents:** Deploys Weather and Cocktail capabilities into Agent Engine.
+3. **Deploy Hosting Agent:** Reaps the endpoints from the sub-agents and deploys as the Master Orchestrator.
+4. **Deploy Frontend:** Hosts the web portal connected to the Hosting Agent.
 5. **Register to Gemini Enterprise:** Automatically links the Hosting Agent Engine configuration directly into your Agentspace App.
+
+> **Optimization Note:** The pipeline checks the `COMMIT_SHA` of the currently deployed services and agents. If the deployed version matches the current commit, the deployment step is skipped to reduce build time.
 
 ### Setup Instructions
 
-1. Link your git repository to **Google Cloud Build**
-2. In Cloud Build -> Triggers -> Settings, ensure the variable `_PROD_PROJECT_ID` (or `_STAGING_PROJECT_ID`) is provided.
+1. Link your git repository to **Google Cloud Build**.
+2. In Cloud Build -> Triggers -> Settings, ensure the variable `_PROD_PROJECT_ID` (or `_STAGING_PROJECT_ID`) is provided, pointing to your target deployment project.
 3. Replace the following substitution variables at the bottom of the Cloud Build YAML files, or provide them dynamically via Cloud Build parameters:
-   - `_PROJECT_NUMBER`
-   - `_AS_APP`: Agentspace App ID
+   - `_REGION`: The GCP region to deploy to (default: `us-central1`).
+   - `_PROJECT_NUMBER`: Your Google Cloud Project Number.
+   - `_AS_APP`: Agentspace App ID.
    - `_AUTH_ID`: Secret identifier for the Google OAuth identity.
 4. Push to the `staging` or `main` branches to begin execution.
