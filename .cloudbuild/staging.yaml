@@ -140,7 +140,7 @@ steps:
 
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
-      - 'PYTHONPATH=/workspace/src:/workspace/src/a2a_agents'
+      - 'PYTHONPATH=/workspace/src'
     waitFor: ['install-dependencies']
 
   # 7. Build and push the Frontend
@@ -201,7 +201,7 @@ steps:
     waitFor: ['deploy-agents']
 
 substitutions:
-  _STAGING_PROJECT_ID: YOUR_STAGING_PROJECT_ID
+  _STAGING_PROJECT_ID: dw-genai-dev
   _REGION: us-central1
   # These must be configured for the Agentspace Registration to succeed:
   _PROJECT_NUMBER: YOUR_PROJECT_NUMBER

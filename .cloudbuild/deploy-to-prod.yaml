@@ -140,7 +140,7 @@ steps:
 
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
-      - 'PYTHONPATH=/workspace/src:/workspace/src/a2a_agents'
+      - 'PYTHONPATH=/workspace/src'
     waitFor: ['install-dependencies']
 
   # 7. Build and push the Frontend
