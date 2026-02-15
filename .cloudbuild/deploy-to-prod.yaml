@@ -97,7 +97,7 @@ steps:
           --display-name "Cocktail Agent Prod" \
           --source-packages=./a2a_agents \
           --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
-          --entrypoint-object=agent \
+          --entrypoint-class=CocktailAgentExecutor \
           --requirements-file=requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
@@ -109,7 +109,7 @@ steps:
           --display-name "Weather Agent Prod" \
           --source-packages=./a2a_agents \
           --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
-          --entrypoint-object=agent \
+          --entrypoint-class=WeatherAgentExecutor \
           --requirements-file=requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
@@ -128,7 +128,7 @@ steps:
           --display-name "Hosting Agent Prod" \
           --source-packages=./a2a_agents \
           --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
-          --entrypoint-object=agent \
+          --entrypoint-class=HostingAgentExecutor \
           --requirements-file=requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
           --set-env-vars="WEATHER_AGENT_NAME=$${WEATHER_AGENT_ID},COCKTAIL_AGENT_NAME=$${COCKTAIL_AGENT_ID},COMMIT_SHA=${COMMIT_SHA}" || exit 1
