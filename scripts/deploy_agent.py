@@ -394,11 +394,12 @@ def deploy_agent_engine_app(
         pass
     
     config = AgentEngineConfig(
+        agent=agent_instance,
         display_name=display_name,
         description=description,
         source_packages=source_packages_list,
         entrypoint_module=entrypoint_module,
-        entrypoint_object=entrypoint_class or entrypoint_object, # If it expects an instantiated object, this will fail if it's a class. 
+        entrypoint_object=entrypoint_class or entrypoint_object,
         class_methods=class_methods_list,
         env_vars=env_vars,
         service_account=service_account,
