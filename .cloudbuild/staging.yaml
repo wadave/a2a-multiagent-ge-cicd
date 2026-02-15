@@ -76,7 +76,7 @@ steps:
       - "-c"
       - |
         set -e
-        pip install uv==0.8.13 --user && uv sync --locked
+        pip install uv==0.8.13 --user && uv sync
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['get-mcp-urls']
@@ -88,7 +88,7 @@ steps:
       - "-c"
       - |
         set -e
-        uv export --project ./a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > requirements.txt
+        uv export --project ./a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > requirements.txt
         COCKTAIL_URL=$$(cat /workspace/cocktail_url.txt)
         WEATHER_URL=$$(cat /workspace/weather_url.txt)
         
