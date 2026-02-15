@@ -19,7 +19,7 @@ default = true
 
 [tool.uv.workspace]
 members = [
-    "a2a_agents",
+    "src/a2a_agents",
 ]
 
 [tool.uv.sources]
