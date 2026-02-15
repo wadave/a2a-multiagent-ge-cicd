@@ -97,26 +97,24 @@ steps:
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Cocktail Agent Staging" \
-          --source-packages=src \
-          --extra-packages=src/a2a_agents \
+          --source-packages=src/a2a_agents \
           --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
           --entrypoint-class=CocktailAgentExecutor \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA},PYTHONPATH=/code/app/src" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
+          --set-env-vars="MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
         
         # Deploy Weather Agent
         UV_WEATHER_OUTPUT=$$(uv run python -m scripts.deploy_agent \
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Weather Agent Staging" \
-          --source-packages=src \
-          --extra-packages=src/a2a_agents \
+          --source-packages=src/a2a_agents \
           --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
           --entrypoint-class=WeatherAgentExecutor \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA},PYTHONPATH=/code/app/src" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
+          --set-env-vars="MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
           
         # Extract Agent Engine IDs using gcloud or from stdout of the deploy script
         # The deploy_agent.py script prints out the playground URL containing the ID
@@ -130,13 +128,12 @@ steps:
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Hosting Agent Staging" \
-          --source-packages=src \
-          --extra-packages=src/a2a_agents \
+          --source-packages=src/a2a_agents \
           --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
           --entrypoint-class=HostingAgentExecutor \
           --requirements-file=src/requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA},PYTHONPATH=/code/app/src" || exit 1
+          --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}" || exit 1
           
         HOSTING_AGENT_ID=$$(gcloud ai agents list --project ${_STAGING_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Staging'" | head -n 1)
         echo "$${HOSTING_AGENT_ID}" > /workspace/hosting_agent_id.txt
