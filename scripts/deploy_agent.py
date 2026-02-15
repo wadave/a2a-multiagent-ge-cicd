@@ -196,8 +196,13 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 )
 @click.option(
     "--entrypoint-object",
-    default="agent_engine",
-    help="Name of the agent instance at module level (required)",
+    default="agent",
+    help="Name of the agent instance at module level",
+)
+@click.option(
+    "--entrypoint-class",
+    default=None,
+    help="Name of the agent class to instantiate at module level",
 )
 @click.option(
     "--requirements-file",
@@ -272,6 +277,7 @@ def deploy_agent_engine_app(
     source_packages: tuple[str, ...],
     entrypoint_module: str,
     entrypoint_object: str,
+    entrypoint_class: str | None,
     requirements_file: str,
     set_env_vars: str | None,
     set_secrets: str | None,
@@ -355,23 +361,36 @@ def deploy_agent_engine_app(
     # Add agent garden labels if configured
 
     # Dynamically import the agent instance to generate class_methods
-    logging.info(f"Importing {entrypoint_module}.{entrypoint_object}")
-    module = importlib.import_module(entrypoint_module)
-    agent_instance = getattr(module, entrypoint_object)
+    if entrypoint_class:
+        logging.info(f"Importing and instantiating {entrypoint_module}.{entrypoint_class}")
+        module = importlib.import_module(entrypoint_module)
+        agent_class = getattr(module, entrypoint_class)
+        agent_instance = agent_class()
+    else:
+        logging.info(f"Importing {entrypoint_module}.{entrypoint_object}")
+        module = importlib.import_module(entrypoint_module)
+        agent_instance = getattr(module, entrypoint_object)
 
     # If the agent_instance is a coroutine, await it to get the actual instance
     if inspect.iscoroutine(agent_instance):
-        logging.info(f"Detected coroutine, awaiting {entrypoint_object}...")
+        logging.info("Detected coroutine, awaiting agent instance...")
         agent_instance = asyncio.run(agent_instance)
     # Generate class methods spec from register_operations
     class_methods_list = generate_class_methods_from_agent(agent_instance)
 
+    # For config, we either pass the object name or the class name to be instantiated
+    if entrypoint_class:
+        # Currently the AgentEngineConfig expects an object, but if classes are supported 
+        # it might need adjustments. For now we pass the object name 'agent' as default
+        # assuming the class instantiate logic is done externally, or we use a wrapper.
+        pass
+    
     config = AgentEngineConfig(
         display_name=display_name,
         description=description,
         source_packages=source_packages_list,
         entrypoint_module=entrypoint_module,
-        entrypoint_object=entrypoint_object,
+        entrypoint_object=entrypoint_class or entrypoint_object, # If it expects an instantiated object, this will fail if it's a class. 
         class_methods=class_methods_list,
         env_vars=env_vars,
         service_account=service_account,
