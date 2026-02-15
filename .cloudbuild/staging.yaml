@@ -1,6 +1,6 @@
 steps:
   # 1. Build and deploy the Cocktail MCP Server (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
     id: 'deploy-cocktail-mcp'
     entrypoint: bash
     args:
@@ -28,7 +28,7 @@ steps:
         fi
 
   # 2. Build and deploy the Weather MCP Server (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
     id: 'deploy-weather-mcp'
     entrypoint: bash
     args:
@@ -179,7 +179,7 @@ steps:
     waitFor: ['install-dependencies']
 
   # 6. Build and deploy the Frontend (skip if already deployed with this commit)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:docker'
     id: 'deploy-frontend'
     entrypoint: bash
     args:
