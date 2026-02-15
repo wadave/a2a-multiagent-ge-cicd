@@ -97,7 +97,7 @@ steps:
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Cocktail Agent Staging" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
           --entrypoint-class=CocktailAgentExecutor \
           --extra-packages=src/a2a_agents/common/ \
@@ -111,7 +111,7 @@ steps:
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Weather Agent Staging" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
           --entrypoint-class=WeatherAgentExecutor \
           --extra-packages=src/a2a_agents/common/ \
@@ -132,7 +132,7 @@ steps:
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --display-name "Hosting Agent Staging" \
-          --source-packages=src/a2a_agents \
+          --source-packages=src \
           --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
           --entrypoint-class=HostingAgentExecutor \
           --extra-packages=src/a2a_agents/common/ \
