@@ -410,6 +410,7 @@ def deploy_agent_engine_app(
         container_concurrency=container_concurrency,
         agent_framework="google-adk",
         identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
+        extra_packages=extra_packages_list,
     )
 
     # Check if an agent with this name already exists
