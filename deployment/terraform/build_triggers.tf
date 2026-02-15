@@ -29,8 +29,10 @@ resource "google_cloudbuild_trigger" "pr_checks" {
 
   filename = ".cloudbuild/pr_checks.yaml"
   included_files = [
-    "app/**",
-    "data_ingestion/**",
+    "mcp_servers/**",
+    "a2a_agents/**",
+    "frontend/**",
+    "scripts/**",
     "tests/**",
     "deployment/**",
     "uv.lock",
@@ -62,8 +64,10 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
 
   filename = ".cloudbuild/staging.yaml"
   included_files = [
-    "app/**",
-    "data_ingestion/**",
+    "mcp_servers/**",
+    "a2a_agents/**",
+    "frontend/**",
+    "scripts/**",
     "tests/**",
     "deployment/**",
     "uv.lock"
