@@ -394,7 +394,6 @@ def deploy_agent_engine_app(
         pass
     
     config = AgentEngineConfig(
-        agent=agent_instance,
         display_name=display_name,
         description=description,
         source_packages=source_packages_list,
@@ -404,7 +403,6 @@ def deploy_agent_engine_app(
         env_vars=env_vars,
         service_account=service_account,
         requirements_file=requirements_file,
-        extra_packages=extra_packages_list,
         labels=labels_dict,
         min_instances=min_instances,
         max_instances=max_instances,
