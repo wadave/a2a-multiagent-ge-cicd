@@ -129,6 +129,7 @@ steps:
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
             --allow-unauthenticated \
+            --memory 2Gi \
             --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},LOCATION=${_REGION},HOSTING_AGENT_NAME=$${HOSTING_AGENT_ID}"
         fi
     waitFor: ['deploy-agents']
