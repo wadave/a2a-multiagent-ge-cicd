@@ -164,9 +164,9 @@ steps:
 substitutions:
   _STAGING_PROJECT_ID: dw-genai-dev
   _REGION: us-central1
-  _PROJECT_NUMBER: YOUR_PROJECT_NUMBER
-  _AS_APP: YOUR_AGENT_SPACE_APP_ID
-  _AUTH_ID: YOUR_OAUTH_CLIENT_ID
+  _PROJECT_NUMBER: '496235138247'
+  _AS_APP: enterprise-search-17489269_1748926990192
+  _AUTH_ID: testID0001
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:
