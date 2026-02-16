@@ -113,7 +113,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
         # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe frontend-staging \
+        CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
         HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
@@ -124,7 +124,7 @@ steps:
           echo "Building and deploying Frontend..."
           docker build -t $$IMAGE ./src/frontend
           docker push $$IMAGE
-          gcloud run deploy frontend-staging \
+          gcloud run deploy a2a-frontend-ge \
             --image $$IMAGE \
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
