@@ -24,17 +24,17 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 # A2A
-from google_adk.server.agent_execution import AgentExecutor, RequestContext
-from google_adk.server.events import EventQueue
-from google_adk.server.tasks import TaskUpdater
-from google_adk.types import (
+from google.adk.server.agent_execution import AgentExecutor, RequestContext
+from google.adk.server.events import EventQueue
+from google.adk.server.tasks import TaskUpdater
+from google.adk.types import (
     Role,
     TaskState,
     TextPart,
     UnsupportedOperationError,
 )
-from google_adk.utils import new_agent_text_message
-from google_adk.utils.errors import ServerError
+from google.adk.utils import new_agent_text_message
+from google.adk.utils.errors import ServerError
 
 from a2a_agents.common.adk_orchestrator_agent import get_orchestrator_agent
 from a2a_agents.common.auth_utils import GoogleAuth

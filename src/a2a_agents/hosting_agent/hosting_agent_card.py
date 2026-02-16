@@ -94,3 +94,6 @@ agent_card = AgentCard(
         }
     ],
 )
+
+# Alias for consistent import pattern across all agent card modules
+hosting_agent_card = agent_card

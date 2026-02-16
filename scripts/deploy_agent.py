@@ -186,13 +186,13 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 @click.option(
     "--source-packages",
     multiple=True,
-    default=["./app"],
-    help="Source packages to deploy. Can be specified multiple times (e.g., --source-packages=./app --source-packages=./lib)",
+    default=["a2a_agents"],
+    help="Source packages to deploy. Can be specified multiple times (e.g., --source-packages=a2a_agents --source-packages=./lib)",
 )
 @click.option(
     "--entrypoint-module",
-    default="app.agent_engine_app",
-    help="Python module path for the agent entrypoint (required)",
+    required=True,
+    help="Python module path for the agent entrypoint (e.g., a2a_agents.cocktail_agent.cocktail_agent_executor)",
 )
 @click.option(
     "--entrypoint-object",
@@ -212,7 +212,7 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 )
 @click.option(
     "--requirements-file",
-    default="app/app_utils/.requirements.txt",
+    default="requirements.txt",
     help="Path to requirements.txt file",
 )
 @click.option(

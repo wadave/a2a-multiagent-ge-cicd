@@ -17,12 +17,12 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, NoReturn
 
-from google_adk.server.agent_execution import AgentExecutor, RequestContext
-from google_adk.server.events import EventQueue
-from google_adk.server.tasks import TaskUpdater
-from google_adk.types import Role, TaskState, TextPart, UnsupportedOperationError
-from google_adk.utils import new_agent_text_message
-from google_adk.utils.errors import ServerError
+from google.adk.server.agent_execution import AgentExecutor, RequestContext
+from google.adk.server.events import EventQueue
+from google.adk.server.tasks import TaskUpdater
+from google.adk.types import Role, TaskState, TextPart, UnsupportedOperationError
+from google.adk.utils import new_agent_text_message
+from google.adk.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService

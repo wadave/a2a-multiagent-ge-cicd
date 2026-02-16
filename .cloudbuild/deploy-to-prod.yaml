@@ -90,94 +90,16 @@ steps:
       - |
         set -e
         uv export --project ./src/a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > src/requirements.txt
-        COCKTAIL_URL=$$(cat /workspace/cocktail_url.txt)
-        WEATHER_URL=$$(cat /workspace/weather_url.txt)
-
-        # Helper: check if agent is already deployed with this COMMIT_SHA
-        agent_needs_deploy() {
-          local display_name="$$1"
-          local agent_id=$$(gcloud ai agents list \
-            --project ${_PROD_PROJECT_ID} --region ${_REGION} \
-            --format="value(name)" --filter="displayName='$$display_name'" 2>/dev/null | head -n 1)
-
-          if [ -z "$$agent_id" ]; then
-            echo "true"
-            return
-          fi
-
-          # Check COMMIT_SHA env var on the deployed agent
-          local deployed_sha=$$(gcloud ai agents describe $$agent_id \
-            --project ${_PROD_PROJECT_ID} --region ${_REGION} \
-            --format="value(spec.deploymentSpec.dedicatedResources.envVars.COMMIT_SHA)" 2>/dev/null || echo "")
-
-          if [ "$$deployed_sha" = "${COMMIT_SHA}" ]; then
-            echo "false"
-          else
-            echo "true"
-          fi
-        }
-
-        # Deploy Cocktail Agent
-        if [ "$$(agent_needs_deploy 'Cocktail Agent Prod')" = "true" ]; then
-          echo "Deploying Cocktail Agent..."
-          UV_COCKTAIL_OUTPUT=$$(cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
-            --project ${_PROD_PROJECT_ID} \
-            --location ${_REGION} \
-            --display-name "Cocktail Agent Prod" \
-            --source-packages=a2a_agents \
-            --entrypoint-module=a2a_agents.cocktail_agent.cocktail_agent_executor \
-            --entrypoint-class=CocktailAgentExecutor \
-            --requirements-file=requirements.txt \
-            --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-            --set-env-vars="CT_MCP_SERVER_URL=$${COCKTAIL_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_COCKTAIL_OUTPUT}"; exit 1; }
-        else
-          echo "Cocktail Agent already deployed with commit ${COMMIT_SHA}, skipping."
-        fi
-
-        # Deploy Weather Agent
-        if [ "$$(agent_needs_deploy 'Weather Agent Prod')" = "true" ]; then
-          echo "Deploying Weather Agent..."
-          UV_WEATHER_OUTPUT=$$(cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
-            --project ${_PROD_PROJECT_ID} \
-            --location ${_REGION} \
-            --display-name "Weather Agent Prod" \
-            --source-packages=a2a_agents \
-            --entrypoint-module=a2a_agents.weather_agent.weather_agent_executor \
-            --entrypoint-class=WeatherAgentExecutor \
-            --requirements-file=requirements.txt \
-            --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-            --set-env-vars="WEA_MCP_SERVER_URL=$${WEATHER_URL},COMMIT_SHA=${COMMIT_SHA}" 2>&1) || { echo "$${UV_WEATHER_OUTPUT}"; exit 1; }
-        else
-          echo "Weather Agent already deployed with commit ${COMMIT_SHA}, skipping."
-        fi
-
-        # Get Agent Engine IDs (needed for Hosting Agent and Frontend)
-        COCKTAIL_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Cocktail Agent Prod'" | head -n 1)
-        WEATHER_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Weather Agent Prod'" | head -n 1)
-
-        # Deploy Hosting Agent
-        if [ "$$(agent_needs_deploy 'Hosting Agent Prod')" = "true" ]; then
-          echo "Deploying Hosting Agent with Cocktail Agent: $${COCKTAIL_AGENT_ID} and Weather Agent: $${WEATHER_AGENT_ID}"
-          (cd src && PYTHONPATH=.. uv run python -m scripts.deploy_agent \
-            --project ${_PROD_PROJECT_ID} \
-            --location ${_REGION} \
-            --display-name "Hosting Agent Prod" \
-            --source-packages=a2a_agents \
-            --entrypoint-module=a2a_agents.hosting_agent.agent_executor \
-            --entrypoint-class=HostingAgentExecutor \
-            --requirements-file=requirements.txt \
-            --service-account=${_APP_SERVICE_ACCOUNT_PROD} \
-            --set-env-vars="WEA_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${WEATHER_AGENT_ID}/environments/default,CT_AGENT_URL=https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${COCKTAIL_AGENT_ID}/environments/default,COMMIT_SHA=${COMMIT_SHA}") || exit 1
-        else
-          echo "Hosting Agent already deployed with commit ${COMMIT_SHA}, skipping."
-        fi
-
-        HOSTING_AGENT_ID=$$(gcloud ai agents list --project ${_PROD_PROJECT_ID} --region ${_REGION} --format="value(name)" --filter="displayName='Hosting Agent Prod'" | head -n 1)
-        echo "$${HOSTING_AGENT_ID}" > /workspace/hosting_agent_id.txt
-
+        export CT_MCP_SERVER_URL=$$(cat /workspace/cocktail_url.txt)
+        export WEA_MCP_SERVER_URL=$$(cat /workspace/weather_url.txt)
+        export PROJECT_ID="${_PROD_PROJECT_ID}"
+        export GOOGLE_CLOUD_REGION="${_REGION}"
+        export APP_SERVICE_ACCOUNT="${_APP_SERVICE_ACCOUNT_PROD}"
+        export COMMIT_SHA="${COMMIT_SHA}"
+        export DISPLAY_NAME_SUFFIX="Prod"
+        uv run python deployment/deploy_agents.py
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
-      - 'PYTHONPATH=/workspace/src'
     waitFor: ['install-dependencies']
 
   # 6. Build and deploy the Frontend (skip if already deployed with this commit)
