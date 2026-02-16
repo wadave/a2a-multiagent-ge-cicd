@@ -17,12 +17,12 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, NoReturn
 
-from google.adk.server.agent_execution import AgentExecutor, RequestContext
-from google.adk.server.events import EventQueue
-from google.adk.server.tasks import TaskUpdater
-from google.adk.types import Role, TaskState, TextPart, UnsupportedOperationError
-from google.adk.utils import new_agent_text_message
-from google.adk.utils.errors import ServerError
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.agent_execution.context import RequestContext
+from a2a.server.events.event_queue import EventQueue
+from a2a.server.tasks import TaskUpdater
+from a2a.types import Role, TaskState, TextPart, UnsupportedOperationError
+from a2a.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
@@ -282,8 +282,8 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Errors should never pass silently (Zen of Python)
             # Always inform the client when something goes wrong
             logging.error(f"Error during execution: {e!s}", exc_info=True)
-            await updater.update_status(
-                TaskState.failed, message=new_agent_text_message(f"Error: {e!s}")
+            await updater.failed(
+                message=updater.new_agent_message([TextPart(text=f"Error: {e!s}")])
             )
             # Re-raise for proper error handling up the stack
             raise

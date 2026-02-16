@@ -24,17 +24,17 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 # A2A
-from google.adk.server.agent_execution import AgentExecutor, RequestContext
-from google.adk.server.events import EventQueue
-from google.adk.server.tasks import TaskUpdater
-from google.adk.types import (
+from a2a.server.agent_execution import AgentExecutor
+from a2a.server.agent_execution.context import RequestContext
+from a2a.server.events.event_queue import EventQueue
+from a2a.server.tasks import TaskUpdater
+from a2a.types import (
     Role,
     TaskState,
     TextPart,
     UnsupportedOperationError,
 )
-from google.adk.utils import new_agent_text_message
-from google.adk.utils.errors import ServerError
+from a2a.utils.errors import ServerError
 
 from a2a_agents.common.adk_orchestrator_agent import get_orchestrator_agent
 from a2a_agents.common.auth_utils import GoogleAuth
@@ -162,8 +162,8 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             # Errors should never pass silently (Zen of Python)
             # Always inform the client when something goes wrong
             logging.error(f"Error during execution: {e!s}", exc_info=True)
-            await updater.update_status(
-                TaskState.failed, message=new_agent_text_message(f"Error: {e!s}")
+            await updater.failed(
+                message=updater.new_agent_message([TextPart(text=f"Error: {e!s}")])
             )
             # Re-raise for proper error handling up the stack
             raise
