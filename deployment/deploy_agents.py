@@ -23,9 +23,9 @@ Environment variables:
     APP_SERVICE_ACCOUNT: Service account email for the agents
     CT_MCP_SERVER_URL: Cocktail MCP server URL
     WEA_MCP_SERVER_URL: Weather MCP server URL
-    COMMIT_SHA: Git commit SHA for change detection
     DISPLAY_NAME_SUFFIX: Environment suffix (e.g., "Staging", "Prod")
     BUCKET_NAME: GCS bucket for staging (default: {PROJECT_ID}-bucket)
+    REQUIREMENTS_FILE: Path to requirements.txt (default: requirements.txt)
 """
 
 import logging
@@ -52,23 +52,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def find_existing_agent(client, display_name):
-    """Find an existing agent by display name.
+def list_existing_agents(client):
+    """List all existing agents and return a dict keyed by display name.
 
     Args:
         client: Vertex AI client
-        display_name: Agent display name to search for
 
     Returns:
-        The existing agent object, or None if not found
+        Dict mapping display_name to agent resource name, or empty dict on error.
     """
+    agents = {}
     try:
         for agent in client.agent_engines.list():
-            if agent.api_resource.display_name == display_name:
-                return agent
+            name = agent.api_resource.display_name
+            if name:
+                agents[name] = agent.api_resource.name
     except Exception as e:
         logger.warning(f"Failed to list existing agents: {e}")
-    return None
+    return agents
 
 
 def deploy_agent(
@@ -82,11 +83,11 @@ def deploy_agent(
     bucket_name,
     requirements_file,
     extra_env_vars,
-    commit_sha,
+    existing_agents,
 ):
     """Deploy a single agent to Vertex AI Agent Engine.
 
-    Checks for existing deployment with matching COMMIT_SHA and skips if found.
+    Skips deployment if an agent with the same display_name already exists.
 
     Args:
         client: Vertex AI client
@@ -99,30 +100,19 @@ def deploy_agent(
         bucket_name: GCS staging bucket name
         requirements_file: Path to requirements.txt
         extra_env_vars: Additional env vars for the agent
-        commit_sha: Git commit SHA for change detection
+        existing_agents: Dict mapping display_name to resource name
 
     Returns:
         The agent resource name (e.g., projects/.../locations/.../reasoningEngines/...)
     """
-    # Check if agent already deployed with this COMMIT_SHA
-    if commit_sha:
-        existing = find_existing_agent(client, display_name)
-        if existing:
-            existing_sha = None
-            # Try to get COMMIT_SHA from existing agent's env vars
-            try:
-                if hasattr(existing, "env_vars") and existing.env_vars:
-                    existing_sha = existing.env_vars.get("COMMIT_SHA")
-            except Exception:
-                pass
-
-            if existing_sha == commit_sha:
-                agent_name = existing.api_resource.name
-                logger.info(
-                    f"Agent '{display_name}' already deployed with "
-                    f"COMMIT_SHA={commit_sha}, skipping. Resource: {agent_name}"
-                )
-                return agent_name
+    # Skip if agent already exists
+    if display_name in existing_agents:
+        agent_name = existing_agents[display_name]
+        logger.info(
+            f"Agent '{display_name}' already exists, skipping deployment. "
+            f"Resource: {agent_name}"
+        )
+        return agent_name
 
     agent = A2aAgent(agent_card=agent_card, agent_executor_builder=executor_builder)
 
@@ -131,7 +121,6 @@ def deploy_agent(
         "LOCATION": location,
         "BUCKET": bucket_name,
         "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
-        "COMMIT_SHA": commit_sha or "",
     }
     env_vars.update(extra_env_vars)
 
@@ -177,9 +166,6 @@ def deploy_agent(
 
 def main():
     """Deploy all agents: Cocktail, Weather, then Hosting."""
-    req_file_env = os.environ.get("REQUIREMENTS_FILE", "requirements.txt")
-    requirements_file = os.path.abspath(req_file_env)
-
     # Change working directory to src/ so extra_packages path resolves correctly
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
     os.chdir(src_dir)
@@ -191,8 +177,8 @@ def main():
     location = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
     service_account = os.environ.get("APP_SERVICE_ACCOUNT")
     bucket_name = os.environ.get("BUCKET_NAME", f"{project_id}-bucket")
-    commit_sha = os.environ.get("COMMIT_SHA", "")
     display_name_suffix = os.environ.get("DISPLAY_NAME_SUFFIX", "Staging")
+    requirements_file = os.environ.get("REQUIREMENTS_FILE", "requirements.txt")
 
     ct_mcp_url = os.environ.get("CT_MCP_SERVER_URL")
     wea_mcp_url = os.environ.get("WEA_MCP_SERVER_URL")
@@ -221,6 +207,11 @@ def main():
         ),
     )
 
+    # Fetch existing agents once to avoid repeated list calls
+    existing_agents = list_existing_agents(client)
+    if existing_agents:
+        logger.info(f"Found {len(existing_agents)} existing agent(s): {list(existing_agents.keys())}")
+
     # --- Deploy Cocktail Agent ---
     try:
         ct_agent_name = deploy_agent(
@@ -234,15 +225,16 @@ def main():
             bucket_name=bucket_name,
             requirements_file=requirements_file,
             extra_env_vars={"CT_MCP_SERVER_URL": ct_mcp_url},
-            commit_sha=commit_sha,
+            existing_agents=existing_agents,
         )
     except Exception as e:
         logger.error(f"Failed to deploy Cocktail Agent: {e}")
         sys.exit(1)
 
-    # Wait for quota to recover before next deployment
-    logger.info("Waiting 60s for API quota to recover...")
-    time.sleep(60)
+    # Wait for quota to recover before next deployment (skip if previous was cached)
+    if f"Cocktail Agent GE {display_name_suffix}" not in existing_agents:
+        logger.info("Waiting 60s for API quota to recover...")
+        time.sleep(60)
 
     # --- Deploy Weather Agent ---
     try:
@@ -257,7 +249,7 @@ def main():
             bucket_name=bucket_name,
             requirements_file=requirements_file,
             extra_env_vars={"WEA_MCP_SERVER_URL": wea_mcp_url},
-            commit_sha=commit_sha,
+            existing_agents=existing_agents,
         )
     except Exception as e:
         logger.error(f"Failed to deploy Weather Agent: {e}")
@@ -267,9 +259,10 @@ def main():
     ct_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{ct_agent_name}/environments/default"
     wea_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{wea_agent_name}/environments/default"
 
-    # Wait for quota to recover before next deployment
-    logger.info("Waiting 60s for API quota to recover...")
-    time.sleep(60)
+    # Wait for quota to recover before next deployment (skip if previous was cached)
+    if f"Weather Agent GE {display_name_suffix}" not in existing_agents:
+        logger.info("Waiting 60s for API quota to recover...")
+        time.sleep(60)
 
     # --- Deploy Hosting Agent ---
     try:
@@ -287,7 +280,7 @@ def main():
                 "CT_AGENT_URL": ct_agent_url,
                 "WEA_AGENT_URL": wea_agent_url,
             },
-            commit_sha=commit_sha,
+            existing_agents=existing_agents,
         )
     except Exception as e:
         logger.error(f"Failed to deploy Hosting Agent: {e}")

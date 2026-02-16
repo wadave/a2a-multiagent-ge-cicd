@@ -81,7 +81,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['get-mcp-urls']
 
-  # 5. Deploy the Agent Engine Apps (skip if already deployed with this commit)
+  # 5. Deploy the Agent Engine Apps (skip if already deployed)
   - name: "python:3.13-slim"
     id: deploy-agents
     entrypoint: /bin/bash
@@ -95,7 +95,6 @@ steps:
         export PROJECT_ID="${_STAGING_PROJECT_ID}"
         export GOOGLE_CLOUD_REGION="${_REGION}"
         export APP_SERVICE_ACCOUNT="${_APP_SERVICE_ACCOUNT_STAGING}"
-        export COMMIT_SHA="${COMMIT_SHA}"
         export DISPLAY_NAME_SUFFIX="Staging"
         uv run python deployment/deploy_agents.py
     env:
