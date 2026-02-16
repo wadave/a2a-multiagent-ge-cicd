@@ -208,7 +208,7 @@ def main():
     try:
         ct_agent_name = deploy_agent(
             client=client,
-            display_name=f"Cocktail Agent {display_name_suffix}",
+            display_name=f"Cocktail Agent GE {display_name_suffix}",
             agent_card=cocktail_agent_card,
             executor_builder=CocktailAgentExecutor,
             project_id=project_id,
@@ -227,7 +227,7 @@ def main():
     try:
         wea_agent_name = deploy_agent(
             client=client,
-            display_name=f"Weather Agent {display_name_suffix}",
+            display_name=f"Weather Agent GE {display_name_suffix}",
             agent_card=weather_agent_card,
             executor_builder=WeatherAgentExecutor,
             project_id=project_id,
@@ -250,7 +250,7 @@ def main():
     try:
         host_agent_name = deploy_agent(
             client=client,
-            display_name=f"Hosting Agent {display_name_suffix}",
+            display_name=f"Hosting Agent GE {display_name_suffix}",
             agent_card=hosting_agent_card,
             executor_builder=HostingAgentExecutor,
             project_id=project_id,

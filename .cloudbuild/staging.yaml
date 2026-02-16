@@ -156,7 +156,7 @@ steps:
           --app-id=${_AS_APP} \
           --agent-url="$${HOSTING_URL}" \
           --agent-name="a2a-agent" \
-          --display-name="A2A Agent Staging" \
+          --display-name="A2A Agent GE Staging" \
           --description="A2A CI/CD Hosting Agent deployed via Cloud Build" \
           --auth-id=${_AUTH_ID}
     id: 'register-agent'
