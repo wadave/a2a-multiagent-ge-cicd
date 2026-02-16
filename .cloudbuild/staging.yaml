@@ -134,34 +134,6 @@ steps:
         fi
     waitFor: ['deploy-agents']
 
-  # 7. Register the Agent to Gemini Enterprise Agentspace
-  - name: "python:3.12-slim"
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        set -e
-        apt-get update && apt-get install -y curl apt-transport-https ca-certificates gnupg
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        apt-get update && apt-get install -y google-cloud-cli
-
-        pip install requests
-
-        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
-        HOSTING_URL="https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${HOSTING_AGENT_ID}/environments/default"
-
-        python scripts/register_agent_to_agentspace.py \
-          --project-number=${_PROJECT_NUMBER} \
-          --app-id=${_AS_APP} \
-          --agent-url="$${HOSTING_URL}" \
-          --agent-name="a2a-agent" \
-          --display-name="A2A Agent GE Staging" \
-          --description="A2A CI/CD Hosting Agent deployed via Cloud Build" \
-          --auth-id=${_AUTH_ID}
-    id: 'register-agent'
-    waitFor: ['deploy-agents']
-
 substitutions:
   _STAGING_PROJECT_ID: dw-genai-dev
   _REGION: us-central1
