@@ -43,6 +43,7 @@ from vertexai.preview.reasoning_engines import A2aAgent
 
 from a2a_agents.cocktail_agent.cocktail_agent_card import cocktail_agent_card
 from a2a_agents.cocktail_agent.cocktail_agent_executor import CocktailAgentExecutor
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 from a2a_agents.hosting_agent.agent_executor import HostingAgentExecutor
 from a2a_agents.hosting_agent.hosting_agent_card import hosting_agent_card
 from a2a_agents.weather_agent.weather_agent_card import weather_agent_card
@@ -72,11 +73,11 @@ def list_existing_agents(client):
     return agents
 
 
-def deploy_agent(
+
+def deploy_adk_agent(
     client,
     display_name,
-    agent_card,
-    executor_builder,
+    agent_factory,
     project_id,
     location,
     service_account,
@@ -85,15 +86,12 @@ def deploy_agent(
     extra_env_vars,
     existing_agents,
 ):
-    """Deploy a single agent to Vertex AI Agent Engine.
-
-    Skips deployment if an agent with the same display_name already exists.
-
+    """Deploy an ADK agent to Vertex AI Agent Engine.
+    
     Args:
         client: Vertex AI client
         display_name: Display name for the agent
-        agent_card: A2A agent card definition
-        executor_builder: Agent executor class
+        agent_factory: Function that returns the ADK Agent instance
         project_id: GCP project ID
         location: GCP region
         service_account: Service account email
@@ -101,9 +99,9 @@ def deploy_agent(
         requirements_file: Path to requirements.txt
         extra_env_vars: Additional env vars for the agent
         existing_agents: Dict mapping display_name to resource name
-
+        
     Returns:
-        The agent resource name (e.g., projects/.../locations/.../reasoningEngines/...)
+        The agent resource name.
     """
     # Skip if agent already exists
     if display_name in existing_agents:
@@ -114,7 +112,17 @@ def deploy_agent(
         )
         return agent_name
 
-    agent = A2aAgent(agent_card=agent_card, agent_executor_builder=executor_builder)
+    # Set env vars temporarily so the factory picks them up if needed
+    original_env = os.environ.copy()
+    os.environ.update(extra_env_vars)
+    
+    try:
+        # Create the agent instance
+        agent_engine = agent_factory()
+    finally:
+        # Restore env
+        os.environ.clear()
+        os.environ.update(original_env)
 
     env_vars = {
         "PROJECT_ID": project_id,
@@ -123,15 +131,15 @@ def deploy_agent(
         "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
     }
     env_vars.update(extra_env_vars)
-
+    
     # Vertex AI rejects empty string env var values
     env_vars = {k: v for k, v in env_vars.items() if v}
 
-    logger.info(f"Deploying '{display_name}' to Agent Engine...")
+    logger.info(f"Deploying '{display_name}' to Agent Engine (ADK Model)...")
 
     config = {
         "display_name": display_name,
-        "description": agent.agent_card.description,
+        "description": agent_engine.description,
         "service_account": service_account,
         "requirements": requirements_file,
         "http_options": {
@@ -143,11 +151,11 @@ def deploy_agent(
         "extra_packages": ["a2a_agents"],
     }
 
-    # Retry with exponential backoff for rate limit (429) errors
+    # Retry with exponential backoff
     max_retries = 3
     for attempt in range(max_retries + 1):
         try:
-            remote_agent = client.agent_engines.create(agent=agent, config=config)
+            remote_agent = client.agent_engines.create(agent_engine=agent_engine, config=config)
             agent_name = remote_agent.api_resource.name
             logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
             return agent_name
@@ -265,12 +273,12 @@ def main():
         time.sleep(60)
 
     # --- Deploy Hosting Agent ---
+    # Using deploy_adk_agent for the new ADK-based hosting agent
     try:
-        host_agent_name = deploy_agent(
+        host_agent_name = deploy_adk_agent(
             client=client,
             display_name=f"Hosting Agent GE {display_name_suffix}",
-            agent_card=hosting_agent_card,
-            executor_builder=HostingAgentExecutor,
+            agent_factory=create_hosting_agent,
             project_id=project_id,
             location=location,
             service_account=service_account,
@@ -300,7 +308,3 @@ def main():
         logger.warning(f"Could not write hosting agent ID to {output_file}: {e}")
         # Print to stdout as fallback
         print(f"HOSTING_AGENT_ID={host_agent_name}")
-
-
-if __name__ == "__main__":
-    main()
