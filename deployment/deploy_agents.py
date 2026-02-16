@@ -63,7 +63,7 @@ def find_existing_agent(client, display_name):
     """
     try:
         for agent in client.agent_engines.list():
-            if agent.display_name == display_name:
+            if agent.api_resource.display_name == display_name:
                 return agent
     except Exception as e:
         logger.warning(f"Failed to list existing agents: {e}")
@@ -145,7 +145,7 @@ def deploy_agent(
             "display_name": display_name,
             "description": agent.agent_card.description,
             "service_account": service_account,
-            "requirements_file": requirements_file,
+            "requirements": requirements_file,
             "http_options": {
                 "base_url": f"https://{location}-aiplatform.googleapis.com",
                 "api_version": "v1beta1",
