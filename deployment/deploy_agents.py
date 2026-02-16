@@ -31,6 +31,7 @@ Environment variables:
 import logging
 import os
 import sys
+import time
 
 # Add src to path so that a2a_agents are importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -139,29 +140,46 @@ def deploy_agent(
 
     logger.info(f"Deploying '{display_name}' to Agent Engine...")
 
-    remote_agent = client.agent_engines.create(
-        agent=agent,
-        config={
-            "display_name": display_name,
-            "description": agent.agent_card.description,
-            "service_account": service_account,
-            "requirements": requirements_file,
-            "http_options": {
-                "base_url": f"https://{location}-aiplatform.googleapis.com",
-                "api_version": "v1beta1",
-            },
-            "staging_bucket": f"gs://{bucket_name}",
-            "env_vars": env_vars,
-            "extra_packages": ["a2a_agents"],
+    config = {
+        "display_name": display_name,
+        "description": agent.agent_card.description,
+        "service_account": service_account,
+        "requirements": requirements_file,
+        "http_options": {
+            "base_url": f"https://{location}-aiplatform.googleapis.com",
+            "api_version": "v1beta1",
         },
-    )
-    agent_name = remote_agent.api_resource.name
-    logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
-    return agent_name
+        "staging_bucket": f"gs://{bucket_name}",
+        "env_vars": env_vars,
+        "extra_packages": ["a2a_agents"],
+    }
+
+    # Retry with exponential backoff for rate limit (429) errors
+    max_retries = 3
+    for attempt in range(max_retries + 1):
+        try:
+            remote_agent = client.agent_engines.create(agent=agent, config=config)
+            agent_name = remote_agent.api_resource.name
+            logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
+            return agent_name
+        except Exception as e:
+            if "429" in str(e) and attempt < max_retries:
+                wait = 60 * (attempt + 1)
+                logger.warning(
+                    f"Rate limited deploying '{display_name}' "
+                    f"(attempt {attempt + 1}/{max_retries + 1}), "
+                    f"waiting {wait}s before retry..."
+                )
+                time.sleep(wait)
+            else:
+                raise
 
 
 def main():
     """Deploy all agents: Cocktail, Weather, then Hosting."""
+    req_file_env = os.environ.get("REQUIREMENTS_FILE", "requirements.txt")
+    requirements_file = os.path.abspath(req_file_env)
+
     # Change working directory to src/ so extra_packages path resolves correctly
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
     os.chdir(src_dir)
@@ -175,7 +193,6 @@ def main():
     bucket_name = os.environ.get("BUCKET_NAME", f"{project_id}-bucket")
     commit_sha = os.environ.get("COMMIT_SHA", "")
     display_name_suffix = os.environ.get("DISPLAY_NAME_SUFFIX", "Staging")
-    requirements_file = os.environ.get("REQUIREMENTS_FILE", "requirements.txt")
 
     ct_mcp_url = os.environ.get("CT_MCP_SERVER_URL")
     wea_mcp_url = os.environ.get("WEA_MCP_SERVER_URL")
@@ -223,6 +240,10 @@ def main():
         logger.error(f"Failed to deploy Cocktail Agent: {e}")
         sys.exit(1)
 
+    # Wait for quota to recover before next deployment
+    logger.info("Waiting 60s for API quota to recover...")
+    time.sleep(60)
+
     # --- Deploy Weather Agent ---
     try:
         wea_agent_name = deploy_agent(
@@ -245,6 +266,10 @@ def main():
     # Build A2A endpoint URLs for the sub-agents
     ct_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{ct_agent_name}/environments/default"
     wea_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{wea_agent_name}/environments/default"
+
+    # Wait for quota to recover before next deployment
+    logger.info("Waiting 60s for API quota to recover...")
+    time.sleep(60)
 
     # --- Deploy Hosting Agent ---
     try:
