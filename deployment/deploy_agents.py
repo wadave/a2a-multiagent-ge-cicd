@@ -54,14 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def list_existing_agents(client):
-    """List all existing agents and return a dict keyed by display name.
-
-    Args:
-        client: Vertex AI client
-
-    Returns:
-        Dict mapping display_name to agent resource name, or empty dict on error.
-    """
+    """List all existing agents and return a dict keyed by display name."""
     agents = {}
     try:
         for agent in client.agent_engines.list():
@@ -72,6 +65,66 @@ def list_existing_agents(client):
         logger.warning(f"Failed to list existing agents: {e}")
     return agents
 
+
+def deploy_agent(
+    client,
+    display_name,
+    agent_card,
+    executor_builder,
+    project_id,
+    location,
+    service_account,
+    bucket_name,
+    requirements_file,
+    extra_env_vars,
+    existing_agents,
+):
+    """Deploy an A2A agent using the A2aAgent template."""
+    if display_name in existing_agents:
+        agent_name = existing_agents[display_name]
+        logger.info(f"Agent '{display_name}' already exists: {agent_name}")
+        return agent_name
+
+    a2a_agent = A2aAgent(
+        agent_card=agent_card, agent_executor_builder=executor_builder
+    )
+
+    env_vars = {
+        "PROJECT_ID": project_id,
+        "LOCATION": location,
+        "BUCKET": bucket_name,
+    }
+    env_vars.update(extra_env_vars)
+    env_vars = {k: v for k, v in env_vars.items() if v}
+
+    logger.info(f"Deploying '{display_name}' (A2A Template)...")
+
+    config = {
+        "display_name": display_name,
+        "description": a2a_agent.agent_card.description,
+        "service_account": service_account,
+        "requirements": [
+            "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
+            "a2a-sdk >= 0.3.4",
+            "pydantic>=2.11.9",
+            "cloudpickle>=3.1.1",
+            "google-auth-oauthlib>=1.2.2",
+            "google-auth[openid]>=2.40.3",
+            "google-genai>=1.36.0",
+        ],
+        "http_options": {
+            "base_url": f"https://{location}-aiplatform.googleapis.com",
+            "api_version": "v1beta1",
+        },
+        "staging_bucket": f"gs://{bucket_name}",
+        "env_vars": env_vars,
+        "extra_packages": ["a2a_agents"],
+    }
+    
+    remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+    agent_name = remote_agent.api_resource.name
+    logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
+    return agent_name
 
 
 def deploy_adk_agent(
@@ -86,30 +139,10 @@ def deploy_adk_agent(
     extra_env_vars,
     existing_agents,
 ):
-    """Deploy an ADK agent to Vertex AI Agent Engine.
-    
-    Args:
-        client: Vertex AI client
-        display_name: Display name for the agent
-        agent_factory: Function that returns the ADK Agent instance
-        project_id: GCP project ID
-        location: GCP region
-        service_account: Service account email
-        bucket_name: GCS staging bucket name
-        requirements_file: Path to requirements.txt
-        extra_env_vars: Additional env vars for the agent
-        existing_agents: Dict mapping display_name to resource name
-        
-    Returns:
-        The agent resource name.
-    """
-    # Skip if agent already exists
+    """Deploy an ADK agent to Vertex AI Agent Engine."""
     if display_name in existing_agents:
         agent_name = existing_agents[display_name]
-        logger.info(
-            f"Agent '{display_name}' already exists, skipping deployment. "
-            f"Resource: {agent_name}"
-        )
+        logger.info(f"Agent '{display_name}' already exists: {agent_name}")
         return agent_name
 
     # Set env vars temporarily so the factory picks them up if needed
@@ -117,10 +150,8 @@ def deploy_adk_agent(
     os.environ.update(extra_env_vars)
     
     try:
-        # Create the agent instance
         agent_engine = agent_factory()
     finally:
-        # Restore env
         os.environ.clear()
         os.environ.update(original_env)
 
@@ -131,17 +162,23 @@ def deploy_adk_agent(
         "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
     }
     env_vars.update(extra_env_vars)
-    
-    # Vertex AI rejects empty string env var values
     env_vars = {k: v for k, v in env_vars.items() if v}
 
-    logger.info(f"Deploying '{display_name}' to Agent Engine (ADK Model)...")
+    logger.info(f"Deploying '{display_name}' (ADK Model)...")
 
     config = {
         "display_name": display_name,
         "description": agent_engine.description,
         "service_account": service_account,
-        "requirements": requirements_file,
+        "requirements": [
+            "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
+            "a2a-sdk >= 0.3.4",
+            "pydantic>=2.11.9",
+            "cloudpickle>=3.1.1",
+            "google-auth-oauthlib>=1.2.2",
+            "google-auth[openid]>=2.40.3",
+            "google-genai>=1.36.0",
+        ],
         "http_options": {
             "base_url": f"https://{location}-aiplatform.googleapis.com",
             "api_version": "v1beta1",
@@ -151,33 +188,16 @@ def deploy_adk_agent(
         "extra_packages": ["a2a_agents"],
     }
 
-    # Retry with exponential backoff
-    max_retries = 3
-    for attempt in range(max_retries + 1):
-        try:
-            remote_agent = client.agent_engines.create(agent_engine=agent_engine, config=config)
-            agent_name = remote_agent.api_resource.name
-            logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
-            return agent_name
-        except Exception as e:
-            if "429" in str(e) and attempt < max_retries:
-                wait = 60 * (attempt + 1)
-                logger.warning(
-                    f"Rate limited deploying '{display_name}' "
-                    f"(attempt {attempt + 1}/{max_retries + 1}), "
-                    f"waiting {wait}s before retry..."
-                )
-                time.sleep(wait)
-            else:
-                raise
+    remote_agent = client.agent_engines.create(agent_engine=agent_engine, config=config)
+    agent_name = remote_agent.api_resource.name
+    logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
+    return agent_name
 
 
 def main():
-    """Deploy all agents: Cocktail, Weather, then Hosting."""
-    # Change working directory to src/ so extra_packages path resolves correctly
+    """Deploy all agents."""
     src_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
     os.chdir(src_dir)
-    logger.info(f"Changed working directory to {src_dir}")
 
     load_dotenv()
 
@@ -191,21 +211,11 @@ def main():
     ct_mcp_url = os.environ.get("CT_MCP_SERVER_URL")
     wea_mcp_url = os.environ.get("WEA_MCP_SERVER_URL")
 
-    if not project_id:
-        logger.error("PROJECT_ID must be set in environment.")
+    if not project_id or not service_account or not ct_mcp_url or not wea_mcp_url:
+        logger.error("Missing required environment variables (PROJECT_ID, APP_SERVICE_ACCOUNT, etc.)")
         sys.exit(1)
 
-    if not service_account:
-        logger.error("APP_SERVICE_ACCOUNT must be set in environment.")
-        sys.exit(1)
-
-    if not ct_mcp_url or not wea_mcp_url:
-        logger.error("CT_MCP_SERVER_URL and WEA_MCP_SERVER_URL must be set.")
-        sys.exit(1)
-
-    vertexai.init(
-        project=project_id, location=location, staging_bucket=f"gs://{bucket_name}"
-    )
+    vertexai.init(project=project_id, location=location, staging_bucket=f"gs://{bucket_name}")
     client = vertexai.Client(
         project=project_id,
         location=location,
@@ -215,96 +225,72 @@ def main():
         ),
     )
 
-    # Fetch existing agents once to avoid repeated list calls
     existing_agents = list_existing_agents(client)
-    if existing_agents:
-        logger.info(f"Found {len(existing_agents)} existing agent(s): {list(existing_agents.keys())}")
 
     # --- Deploy Cocktail Agent ---
-    try:
-        ct_agent_name = deploy_agent(
-            client=client,
-            display_name=f"Cocktail Agent GE {display_name_suffix}",
-            agent_card=cocktail_agent_card,
-            executor_builder=CocktailAgentExecutor,
-            project_id=project_id,
-            location=location,
-            service_account=service_account,
-            bucket_name=bucket_name,
-            requirements_file=requirements_file,
-            extra_env_vars={"CT_MCP_SERVER_URL": ct_mcp_url},
-            existing_agents=existing_agents,
-        )
-    except Exception as e:
-        logger.error(f"Failed to deploy Cocktail Agent: {e}")
-        sys.exit(1)
-
-    # Wait for quota to recover before next deployment (skip if previous was cached)
-    if f"Cocktail Agent GE {display_name_suffix}" not in existing_agents:
-        logger.info("Waiting 60s for API quota to recover...")
-        time.sleep(60)
+    ct_agent_name = deploy_agent(
+        client=client,
+        display_name=f"Cocktail Agent GE {display_name_suffix}",
+        agent_card=cocktail_agent_card,
+        executor_builder=CocktailAgentExecutor,
+        project_id=project_id,
+        location=location,
+        service_account=service_account,
+        bucket_name=bucket_name,
+        requirements_file=requirements_file,
+        extra_env_vars={"CT_MCP_SERVER_URL": ct_mcp_url},
+        existing_agents=existing_agents,
+    )
 
     # --- Deploy Weather Agent ---
-    try:
-        wea_agent_name = deploy_agent(
-            client=client,
-            display_name=f"Weather Agent GE {display_name_suffix}",
-            agent_card=weather_agent_card,
-            executor_builder=WeatherAgentExecutor,
-            project_id=project_id,
-            location=location,
-            service_account=service_account,
-            bucket_name=bucket_name,
-            requirements_file=requirements_file,
-            extra_env_vars={"WEA_MCP_SERVER_URL": wea_mcp_url},
-            existing_agents=existing_agents,
-        )
-    except Exception as e:
-        logger.error(f"Failed to deploy Weather Agent: {e}")
-        sys.exit(1)
+    wea_agent_name = deploy_agent(
+        client=client,
+        display_name=f"Weather Agent GE {display_name_suffix}",
+        agent_card=weather_agent_card,
+        executor_builder=WeatherAgentExecutor,
+        project_id=project_id,
+        location=location,
+        service_account=service_account,
+        bucket_name=bucket_name,
+        requirements_file=requirements_file,
+        extra_env_vars={"WEA_MCP_SERVER_URL": wea_mcp_url},
+        existing_agents=existing_agents,
+    )
 
-    # Build A2A endpoint URLs for the sub-agents
-    ct_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{ct_agent_name}/environments/default"
-    wea_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{wea_agent_name}/environments/default"
-
-    # Wait for quota to recover before next deployment (skip if previous was cached)
-    if f"Weather Agent GE {display_name_suffix}" not in existing_agents:
-        logger.info("Waiting 60s for API quota to recover...")
-        time.sleep(60)
+    # URLs for Hosting Agent
+    ct_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{ct_agent_name}/a2a"
+    wea_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{wea_agent_name}/a2a"
 
     # --- Deploy Hosting Agent ---
-    # Using deploy_adk_agent for the new ADK-based hosting agent
-    try:
-        host_agent_name = deploy_adk_agent(
-            client=client,
-            display_name=f"Hosting Agent GE {display_name_suffix}",
-            agent_factory=create_hosting_agent,
-            project_id=project_id,
-            location=location,
-            service_account=service_account,
-            bucket_name=bucket_name,
-            requirements_file=requirements_file,
-            extra_env_vars={
-                "CT_AGENT_URL": ct_agent_url,
-                "WEA_AGENT_URL": wea_agent_url,
-            },
-            existing_agents=existing_agents,
-        )
-    except Exception as e:
-        logger.error(f"Failed to deploy Hosting Agent: {e}")
-        sys.exit(1)
+    host_agent_name = deploy_adk_agent(
+        client=client,
+        display_name=f"Hosting Agent GE {display_name_suffix}",
+        agent_factory=create_hosting_agent,
+        project_id=project_id,
+        location=location,
+        service_account=service_account,
+        bucket_name=bucket_name,
+        requirements_file=requirements_file,
+        extra_env_vars={
+            "CT_AGENT_URL": ct_agent_url,
+            "WEA_AGENT_URL": wea_agent_url,
+        },
+        existing_agents=existing_agents,
+    )
 
-    logger.info("All agents deployed successfully.")
+    logger.info(f"All agents deployed. Hosting Agent: {host_agent_name}")
 
-    # Write hosting agent ID to workspace file for downstream Cloud Build steps
-    output_file = os.environ.get(
-        "HOSTING_AGENT_OUTPUT", "/workspace/hosting_agent_id.txt"
+    # Write hosting agent ID for CI/CD pipeline (frontend deployment reads this)
+    hosting_agent_id_path = os.environ.get(
+        "HOSTING_AGENT_ID_FILE", "/workspace/hosting_agent_id.txt"
     )
     try:
-        with open(output_file, "w") as f:
+        with open(hosting_agent_id_path, "w") as f:
             f.write(host_agent_name)
-        logger.info(f"Wrote hosting agent ID to {output_file}")
-    except OSError as e:
-        logger.warning(f"Could not write hosting agent ID to {output_file}: {e}")
-        # Print to stdout as fallback
-        print(f"HOSTING_AGENT_ID={host_agent_name}")
+        logger.info(f"Wrote hosting agent ID to {hosting_agent_id_path}")
+    except OSError:
+        logger.warning(f"Could not write hosting agent ID to {hosting_agent_id_path}")
+
+
+if __name__ == "__main__":
+    main()

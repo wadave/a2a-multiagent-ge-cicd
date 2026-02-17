@@ -13,6 +13,11 @@
 # limitations under the License.
 # Author: Dave Wang
 from a2a_agents.common.adk_orchestrator_agent_executor import AdkOrchestratorAgentExecutor
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
+from google.adk import Runner
+from google.adk.artifacts import InMemoryArtifactService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.sessions import InMemorySessionService
 import logging
 import os
 from dotenv import load_dotenv
@@ -23,16 +28,32 @@ load_dotenv()
 
 
 class HostingAgentExecutor(AdkOrchestratorAgentExecutor):
-    """Agent Executor that wraps OrchestratorAgentExecutor with environment-based configuration.
-
-    This class provides backward compatibility by reading remote agent addresses
-    from environment variables and delegating to OrchestratorAgentExecutor.
+    """Agent Executor that uses create_hosting_agent for the ADK agent.
+    
+    This executor bridges the A2A protocol with the hosting agent defined
+    in adk_agent.py (which uses LlmAgent with sub-agents).
     """
 
     def __init__(self) -> None:
-        """Initialize with remote agent addresses from environment variables."""
-        remote_agent_addresses = [
-            os.getenv("CT_AGENT_URL", "http://localhost:10002"),
-            os.getenv("WEA_AGENT_URL", "http://localhost:10001"),
-        ]
-        super().__init__(remote_agent_addresses=remote_agent_addresses)
+        """Initialize."""
+        # We don't need remote_agent_addresses for super because we override _init_agent
+        super().__init__(remote_agent_addresses=[])
+
+    async def _init_agent(self) -> None:
+        """
+        Lazy initialization of agent resources using create_hosting_agent.
+        """
+        if self.agent is None:
+            # Create the actual agent using the factory
+            # This factory reads CT_AGENT_URL and WEA_AGENT_URL from env
+            self.agent = create_hosting_agent()
+
+            # The Runner orchestrates the agent execution
+            self.runner = Runner(
+                app_name=self.agent.name,
+                agent=self.agent,
+                # In-memory services for simplicity
+                artifact_service=InMemoryArtifactService(),
+                session_service=InMemorySessionService(),
+                memory_service=InMemoryMemoryService(),
+            )

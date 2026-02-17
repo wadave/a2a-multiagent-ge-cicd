@@ -25,18 +25,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize Vertex AI and load agent config
-with open("deployment_metadata.json", encoding="utf-8") as f:
-    remote_agent_engine_id = json.load(f)["remote_agent_engine_id"]
+# Load agent config from environment variables (or deployment_metadata.json fallback)
+project_id = os.environ.get("PROJECT_ID", "dw-genai-dev")
+project_number = os.environ.get("PROJECT_NUMBER", "496235138247")
+location = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
+engine_id = os.environ.get("AGENT_ENGINE_ID")
 
-parts = remote_agent_engine_id.split("/")
-project_id = parts[1]
-location = parts[3]
-engine_id = parts[5]
+if not engine_id:
+    # Fallback: try loading from deployment_metadata.json
+    metadata_path = os.path.join(os.path.dirname(__file__), "..", "..", "deployment_metadata.json")
+    if os.path.exists(metadata_path):
+        with open(metadata_path, encoding="utf-8") as f:
+            remote_agent_engine_id = json.load(f)["remote_agent_engine_id"]
+        parts = remote_agent_engine_id.split("/")
+        project_id = parts[1]
+        location = parts[3]
+        engine_id = parts[5]
+    else:
+        raise RuntimeError(
+            "AGENT_ENGINE_ID env var not set and deployment_metadata.json not found. "
+            "Set AGENT_ENGINE_ID, PROJECT_ID, PROJECT_NUMBER, GOOGLE_CLOUD_REGION env vars."
+        )
 
-# Convert remote agent engine ID to streaming URL.
+# Convert to streaming URL
 base_url = f"https://{location}-aiplatform.googleapis.com"
-url_path = f"/v1/projects/{project_id}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+url_path = f"/v1/projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
 
 logger.info("Using remote agent engine ID: %s", remote_agent_engine_id)
 logger.info("Using base URL: %s", base_url)

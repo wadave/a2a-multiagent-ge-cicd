@@ -11,7 +11,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}"
 
         # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe cocktail-mcp-prod \
+        CURRENT_IMAGE=$$(gcloud run services describe cocktail-mcp-ge-prod \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
@@ -20,7 +20,7 @@ steps:
           echo "Building and deploying Cocktail MCP Server..."
           docker build -t $$IMAGE ./src/mcp_servers/cocktail_mcp_server
           docker push $$IMAGE
-          gcloud run deploy cocktail-mcp-prod \
+          gcloud run deploy cocktail-mcp-ge-prod \
             --image $$IMAGE \
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
@@ -40,7 +40,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}"
 
         # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe weather-mcp-prod \
+        CURRENT_IMAGE=$$(gcloud run services describe weather-mcp-ge-prod \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
@@ -49,7 +49,7 @@ steps:
           echo "Building and deploying Weather MCP Server..."
           docker build -t $$IMAGE ./src/mcp_servers/weather_mcp_server
           docker push $$IMAGE
-          gcloud run deploy weather-mcp-prod \
+          gcloud run deploy weather-mcp-ge-prod \
             --image $$IMAGE \
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
@@ -63,8 +63,8 @@ steps:
     args:
       - '-c'
       - |
-        gcloud run services describe cocktail-mcp-prod --region ${_REGION} --format 'value(status.url)' > /workspace/cocktail_url.txt
-        gcloud run services describe weather-mcp-prod --region ${_REGION} --format 'value(status.url)' > /workspace/weather_url.txt
+        gcloud run services describe cocktail-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' > /workspace/cocktail_url.txt
+        gcloud run services describe weather-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' > /workspace/weather_url.txt
     id: 'get-mcp-urls'
     waitFor: ['deploy-cocktail-mcp', 'deploy-weather-mcp']
 
@@ -114,10 +114,13 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
         # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe frontend-prod \
+        CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge-prod \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
-        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
+        HOSTING_AGENT_RESOURCE=$$(cat /workspace/hosting_agent_id.txt)
+        # Extract the engine ID from the full resource name
+        # Format: projects/{number}/locations/{loc}/reasoningEngines/{id}
+        AGENT_ENGINE_ID=$$(echo "$$HOSTING_AGENT_RESOURCE" | awk -F'/' '{print $$NF}')
 
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
           echo "Frontend already deployed with commit ${COMMIT_SHA}, skipping."
@@ -125,12 +128,13 @@ steps:
           echo "Building and deploying Frontend..."
           docker build -t $$IMAGE ./src/frontend
           docker push $$IMAGE
-          gcloud run deploy frontend-prod \
+          gcloud run deploy a2a-frontend-ge-prod \
             --image $$IMAGE \
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
             --allow-unauthenticated \
-            --set-env-vars "PROJECT_ID=${_PROD_PROJECT_ID},LOCATION=${_REGION},HOSTING_AGENT_NAME=$${HOSTING_AGENT_ID}"
+            --memory 2Gi \
+            --set-env-vars "PROJECT_ID=${_PROD_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
         fi
     waitFor: ['deploy-agents']
 

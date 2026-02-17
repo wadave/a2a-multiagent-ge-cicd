@@ -13,36 +13,50 @@
 # limitations under the License.
 
 import logging
+import os
 
 import pytest
 from google.adk.events.event import Event
+from vertexai import agent_engines
 
-from app.agent_engine_app import AgentEngineApp
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
+
+
+@pytest.fixture(autouse=True)
+def _set_agent_env_vars():
+    """Set required environment variables for the hosting agent."""
+    os.environ.setdefault(
+        "CT_AGENT_URL",
+        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/8358349955399680000/a2a",
+    )
+    os.environ.setdefault(
+        "WEA_AGENT_URL",
+        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5302657608228798464/a2a",
+    )
 
 
 @pytest.fixture
-def agent_app() -> AgentEngineApp:
-    """Fixture to create and set up AgentEngineApp instance"""
-    from app.agent_engine_app import agent_engine
+def agent_app():
+    """Fixture to create and set up an AdkApp wrapping the hosting agent."""
+    root_agent = create_hosting_agent()
+    app = agent_engines.AdkApp(agent=root_agent)
+    app.set_up()
+    return app
 
-    agent_engine.set_up()
-    return agent_engine
 
-
+@pytest.mark.integration
 @pytest.mark.asyncio
-async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
+async def test_agent_stream_query(agent_app) -> None:
     """
     Integration test for the agent stream query functionality.
     Tests that the agent returns valid streaming responses.
     """
-    # Create message and events for the async_stream_query
     message = "Hi!"
     events = []
     async for event in agent_app.async_stream_query(message=message, user_id="test"):
         events.append(event)
     assert len(events) > 0, "Expected at least one chunk in response"
 
-    # Check for valid content in the response
     has_text_content = False
     for event in events:
         validated_event = Event.model_validate(event)
@@ -58,7 +72,8 @@ async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     assert has_text_content, "Expected at least one event with text content"
 
 
-def test_agent_feedback(agent_app: AgentEngineApp) -> None:
+@pytest.mark.integration
+def test_agent_feedback(agent_app) -> None:
     """
     Integration test for the agent feedback functionality.
     Tests that feedback can be registered successfully.

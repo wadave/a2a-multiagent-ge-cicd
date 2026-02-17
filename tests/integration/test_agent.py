@@ -12,19 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+import pytest
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from app.agent import root_agent
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 
 
+@pytest.fixture(autouse=True)
+def _set_agent_env_vars():
+    """Set required environment variables for the hosting agent."""
+    os.environ.setdefault(
+        "CT_AGENT_URL",
+        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/8358349955399680000/a2a",
+    )
+    os.environ.setdefault(
+        "WEA_AGENT_URL",
+        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5302657608228798464/a2a",
+    )
+
+
+@pytest.mark.integration
 def test_agent_stream() -> None:
     """
     Integration test for the agent stream functionality.
     Tests that the agent returns valid streaming responses.
     """
+    root_agent = create_hosting_agent()
 
     session_service = InMemorySessionService()
 
@@ -32,7 +50,7 @@ def test_agent_stream() -> None:
     runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
 
     message = types.Content(
-        role="user", parts=[types.Part.from_text(text="Why is the sky blue?")]
+        role="user", parts=[types.Part.from_text(text="Hello! How are you?")]
     )
 
     events = list(
