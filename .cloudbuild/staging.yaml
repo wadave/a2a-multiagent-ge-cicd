@@ -126,13 +126,31 @@ steps:
         CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge2 \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
+        # Read and validate hosting agent ID
+        if [ ! -f /workspace/hosting_agent_id.txt ]; then
+          echo "ERROR: hosting_agent_id.txt not found!"
+          exit 1
+        fi
+
         HOSTING_AGENT_RESOURCE=$$(cat /workspace/hosting_agent_id.txt)
+        echo "Hosting Agent Resource: $$HOSTING_AGENT_RESOURCE"
+
         # Extract the engine ID from the full resource name
         # Format: projects/{number}/locations/{loc}/reasoningEngines/{id}
         AGENT_ENGINE_ID=$$(echo "$$HOSTING_AGENT_RESOURCE" | awk -F'/' '{print $$NF}')
 
+        if [ -z "$$AGENT_ENGINE_ID" ]; then
+          echo "ERROR: Failed to extract AGENT_ENGINE_ID from: $$HOSTING_AGENT_RESOURCE"
+          exit 1
+        fi
+
+        echo "Extracted AGENT_ENGINE_ID: $$AGENT_ENGINE_ID"
+
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
-          echo "Frontend already deployed with commit ${COMMIT_SHA}, skipping."
+          echo "Image already deployed with commit ${COMMIT_SHA}, but updating service with latest env vars..."
+          gcloud run services update a2a-frontend-ge2 \
+            --region ${_REGION} \
+            --update-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
         else
           echo "Building and deploying Frontend with latest src code..."
           docker build -t $$IMAGE ./src/frontend
@@ -143,6 +161,7 @@ steps:
             --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
             --allow-unauthenticated \
             --memory 2Gi \
+            --timeout 600 \
             --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
         fi
     waitFor: ['deploy-agents']
