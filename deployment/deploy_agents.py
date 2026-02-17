@@ -261,7 +261,7 @@ def main():
     ct_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{ct_agent_name}/a2a"
     wea_agent_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{wea_agent_name}/a2a"
 
-    # --- Deploy Hosting Agent ---
+    # --- Deploy Hosting Agent (ADK agent with RemoteA2aAgent sub-agents) ---
     host_agent_name = deploy_adk_agent(
         client=client,
         display_name=f"Hosting Agent GE2 {display_name_suffix}",
