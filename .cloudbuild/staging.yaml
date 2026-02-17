@@ -149,11 +149,6 @@ steps:
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here
 # These are set in deployment/terraform/build_triggers.tf
-substitutions:
-  _STAGING_PROJECT_ID: ${_STAGING_PROJECT_ID}
-  _REGION: ${_REGION}
-  _PROJECT_NUMBER: ${_PROJECT_NUMBER}
-  _APP_SERVICE_ACCOUNT_STAGING: ${_APP_SERVICE_ACCOUNT_STAGING}
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:
