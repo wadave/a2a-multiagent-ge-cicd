@@ -188,7 +188,7 @@ def deploy_adk_agent(
         "extra_packages": ["a2a_agents"],
     }
 
-    remote_agent = client.agent_engines.create(agent_engine=agent_engine, config=config)
+    remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
     agent_name = remote_agent.api_resource.name
     logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
     return agent_name
