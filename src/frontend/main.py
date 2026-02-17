@@ -35,6 +35,20 @@ PROJECT_NUMBER = os.getenv("PROJECT_NUMBER")
 AGENT_ENGINE_ID = os.getenv("AGENT_ENGINE_ID")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 
+# Validate required environment variables
+missing_vars = []
+if not PROJECT_ID or PROJECT_ID == "null":
+    missing_vars.append("PROJECT_ID")
+if not PROJECT_NUMBER or PROJECT_NUMBER == "null":
+    missing_vars.append("PROJECT_NUMBER")
+if not AGENT_ENGINE_ID or AGENT_ENGINE_ID == "null":
+    missing_vars.append("AGENT_ENGINE_ID")
+
+if missing_vars:
+    error_msg = f"Missing or invalid required environment variables: {', '.join(missing_vars)}"
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
 # Initialize Vertex AI session
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 
@@ -43,8 +57,12 @@ RESOURCE_NAME = (
     f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{AGENT_ENGINE_ID}"
 )
 logger.info(f"Connecting to agent: {RESOURCE_NAME}")
-remote_agent = agent_engines.get(RESOURCE_NAME)
-logger.info(f"Connected to agent: {remote_agent.display_name}")
+try:
+    remote_agent = agent_engines.get(RESOURCE_NAME)
+    logger.info(f"Connected to agent: {remote_agent.display_name}")
+except Exception as e:
+    logger.error(f"Failed to connect to agent at {RESOURCE_NAME}: {e}")
+    raise
 
 
 async def get_response_from_agent(
