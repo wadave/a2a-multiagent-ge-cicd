@@ -56,20 +56,34 @@ The agents interact with the following MCP servers:
 ```
 .
 ├── .cloudbuild/                  # Cloud Build CI/CD pipelines
-│   ├── pr_checks.yaml
-│   ├── staging.yaml
-│   └── deploy-to-prod.yaml
+│   ├── pr_checks.yaml            #   PR validation (unit + integration tests)
+│   ├── staging.yaml              #   Staging deployment (on push to staging)
+│   └── deploy-to-prod.yaml       #   Production deployment (manual approval)
 ├── asset/                        # Architecture diagrams, screenshots
 ├── deployment/
 │   ├── deploy_agents.py          # Python script to deploy all agents
-│   └── terraform/                # Terraform IaC for Agent Engine, IAM, etc.
-├── scripts/                      # Utility scripts
+│   └── terraform/                # Terraform IaC for infrastructure
+│       ├── apis.tf               #   GCP API enablement
+│       ├── backend.tf            #   Terraform state backend (GCS)
+│       ├── build_triggers.tf     #   Cloud Build triggers
+│       ├── github.tf             #   GitHub connection + repository
+│       ├── iam.tf                #   IAM role assignments
+│       ├── locals.tf             #   Agent definitions, service lists
+│       ├── providers.tf          #   Provider versions
+│       ├── service.tf            #   Agent Engine resources
+│       ├── service_accounts.tf   #   Service accounts (CICD + app)
+│       ├── storage.tf            #   GCS buckets for logs
+│       ├── telemetry.tf          #   BigQuery telemetry
+│       └── variables.tf          #   Input variables
+├── scripts/
+│   ├── deploy_agent.py           # CLI tool to deploy individual agents
+│   └── register_agent_to_agentspace.py  # Register agents to Agentspace
 ├── src/
 │   ├── a2a_agents/               # Agent source code (workspace package)
-│   │   ├── common/               # Shared executors, auth utilities
-│   │   ├── cocktail_agent/       # Cocktail agent card, executor, ADK agent
-│   │   ├── hosting_agent/        # Host agent (LlmAgent + RemoteA2aAgent)
-│   │   └── weather_agent/        # Weather agent card, executor, ADK agent
+│   │   ├── common/               #   Shared executors, auth utilities
+│   │   ├── cocktail_agent/       #   Cocktail agent card, executor, ADK agent
+│   │   ├── hosting_agent/        #   Host agent (LlmAgent + RemoteA2aAgent)
+│   │   └── weather_agent/        #   Weather agent card, executor, ADK agent
 │   ├── frontend/                 # Gradio frontend (connects via A2A)
 │   │   ├── Dockerfile
 │   │   ├── main.py
@@ -104,8 +118,13 @@ Here are some example questions you can ask the chatbot:
 
 1. [Python 3.12+](https://www.python.org/downloads/)
 2. [gcloud SDK](https://cloud.google.com/sdk/docs/install)
-3. [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
-4. Google Cloud project with Vertex AI API enabled
+3. [Terraform](https://developer.hashicorp.com/terraform/install) (>= 1.0)
+4. [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
+5. A GitHub repository for your source code
+6. Three Google Cloud projects:
+   - **CI/CD project** — runs Cloud Build pipelines
+   - **Staging project** — staging environment for agents and services
+   - **Production project** — production environment
 
 ### Local Testing
 
@@ -139,38 +158,171 @@ python tests/integration/test_hosting_agent_local.py
 
 #### 4. Run the frontend locally
 
+Create `src/frontend/.env` with:
+
+```bash
+PROJECT_ID="your-project-id"
+PROJECT_NUMBER="your-project-number"
+AGENT_ENGINE_ID="your-hosting-agent-engine-id"
+GOOGLE_CLOUD_LOCATION="us-central1"
+```
+
 ```bash
 cd src/frontend
 uv run python main.py
 # Open http://localhost:8080
 ```
 
-### Deployment
+---
 
-#### Infrastructure (Terraform)
+## CI/CD Setup
 
-The `deployment/terraform/` directory contains Terraform configuration for:
+The project uses **Terraform** for infrastructure provisioning and **Cloud Build** for CI/CD pipelines.
 
-- Agent Engine resources (Cocktail, Weather, Hosting agents)
-- Service accounts and IAM
-- Cloud Build triggers (CI/CD)
-- Storage buckets
+### Step 1: Create a GitHub PAT Secret
+
+Create a GitHub Personal Access Token and store it in Secret Manager in your CI/CD project:
+
+```bash
+echo -n "YOUR_GITHUB_PAT" | gcloud secrets create github-pat \
+  --project=YOUR_CICD_PROJECT_ID \
+  --data-file=-
+```
+
+### Step 2: Configure Terraform Variables
+
+Create a `terraform.tfvars` file in `deployment/terraform/`:
+
+```hcl
+# Project IDs
+cicd_runner_project_id = "your-cicd-project-id"
+staging_project_id     = "your-staging-project-id"
+prod_project_id        = "your-prod-project-id"
+
+# GitHub
+repository_owner          = "your-github-org-or-username"
+repository_name           = "a2a-multiagent-ge-cicd"
+github_app_installation_id = "YOUR_GITHUB_APP_INSTALLATION_ID"
+github_pat_secret_id       = "github-pat"
+
+# Set to true on first run to create the Cloud Build GitHub connection
+create_cb_connection = true
+
+# Set to true only if you want Terraform to create the GitHub repo
+create_repository = false
+
+# Region
+region = "us-central1"
+```
+
+### Step 3: Configure Terraform Backend
+
+Update `deployment/terraform/backend.tf` with your GCS bucket for Terraform state:
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket = "your-project-terraform-state"
+    prefix = "a2a-multiagent-ge-cicd"
+  }
+}
+```
+
+Create the state bucket if it doesn't exist:
+
+```bash
+gcloud storage buckets create gs://your-project-terraform-state \
+  --project=YOUR_CICD_PROJECT_ID \
+  --location=us-central1
+```
+
+### Step 4: Run Terraform
 
 ```bash
 cd deployment/terraform
+
 terraform init
-terraform apply
+terraform plan    # Review the changes
+terraform apply   # Apply the changes
 ```
 
-#### CI/CD Pipeline
+This provisions:
 
-Pushing to the `staging` branch triggers the Cloud Build pipeline (`.cloudbuild/staging.yaml`) which:
+| Resource | Description |
+|---|---|
+| **Service Accounts** | `{project-name}-cb` (CI/CD runner), `{project-name}-app` (agent runner, per env) |
+| **IAM Roles** | AI Platform, Storage, Logging, Cloud Build roles for each SA |
+| **GCP APIs** | Vertex AI, Cloud Run, Cloud Build, BigQuery, etc. |
+| **Cloud Build Triggers** | PR checks, staging CD, production deployment |
+| **GitHub Connection** | Cloud Build ↔ GitHub repository link |
+| **Agent Engine Resources** | 3 agents × 2 environments = 6 Reasoning Engine resources (initialized with dummy code) |
+| **Storage Buckets** | Logs and feedback data buckets per project |
+| **Telemetry** | BigQuery datasets + Cloud Logging sinks for observability |
 
-1. Deploys MCP servers to Cloud Run
-2. Deploys all agents to Agent Engine
-3. Deploys the Gradio frontend to Cloud Run
+### Step 5: Verify Cloud Build Triggers
 
-### Running Tests
+After Terraform completes, verify the triggers were created:
+
+```bash
+gcloud builds triggers list \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+```
+
+You should see three triggers:
+
+| Trigger | Branch | Pipeline |
+|---|---|---|
+| `pr-a2a-multiagent-ge-cicd` | PR → `main` | `.cloudbuild/pr_checks.yaml` |
+| `cd-a2a-multiagent-ge-cicd` | Push → `staging` | `.cloudbuild/staging.yaml` |
+| `deploy-a2a-multiagent-ge-cicd` | Manual (approval required) | `.cloudbuild/deploy-to-prod.yaml` |
+
+---
+
+## CI/CD Pipelines
+
+### PR Checks (`.cloudbuild/pr_checks.yaml`)
+
+Triggered on pull requests to `main`. Runs:
+
+1. Install dependencies (`uv sync --locked`)
+2. Unit tests (`pytest tests/unit`)
+3. Integration tests (`pytest tests/integration`)
+
+### Staging Deployment (`.cloudbuild/staging.yaml`)
+
+Triggered on push to `staging` branch. Runs:
+
+1. **Build & deploy MCP servers** to Cloud Run (`cocktail-mcp-ge-staging`, `weather-mcp-ge-staging`)
+2. **Extract MCP URLs** from deployed Cloud Run services
+3. **Install Python dependencies** (`uv sync`)
+4. **Deploy agents** to Agent Engine via `deployment/deploy_agents.py`
+   - Cocktail Agent GE2, Weather Agent GE2, Hosting Agent GE2
+5. **Build & deploy frontend** to Cloud Run (`a2a-frontend-ge2`)
+
+### Production Deployment (`.cloudbuild/deploy-to-prod.yaml`)
+
+Triggered manually with **approval required**. Same steps as staging but targeting the production project:
+
+- MCP servers: `cocktail-mcp-ge-prod`, `weather-mcp-ge-prod`
+- Frontend: `a2a-frontend-ge2-prod`
+- Agents: `*Agent GE2 Prod`
+- Registers the hosting agent to Gemini Enterprise Agentspace
+
+### Naming Convention
+
+| Component | Staging | Production |
+|---|---|---|
+| Cocktail MCP | `cocktail-mcp-ge-staging` | `cocktail-mcp-ge-prod` |
+| Weather MCP | `weather-mcp-ge-staging` | `weather-mcp-ge-prod` |
+| Frontend | `a2a-frontend-ge2` | `a2a-frontend-ge2-prod` |
+| Cocktail Agent Engine | `Cocktail Agent GE2 Staging` | `Cocktail Agent GE2 Prod` |
+| Weather Agent Engine | `Weather Agent GE2 Staging` | `Weather Agent GE2 Prod` |
+| Hosting Agent Engine | `Hosting Agent GE2 Staging` | `Hosting Agent GE2 Prod` |
+
+---
+
+## Running Tests
 
 ```bash
 # Unit tests
@@ -178,6 +330,12 @@ uv run pytest tests/unit/
 
 # Integration tests (requires deployed agents)
 uv run pytest tests/integration/ -m integration
+
+# Hosting agent local test
+python tests/integration/test_hosting_agent_local.py
+
+# Hosting agent remote test (requires deployed ADK agent)
+python tests/integration/test_hosting_agent_remote_adk.py
 
 # Evaluation
 uv run python tests/eval/run_evaluation.py
