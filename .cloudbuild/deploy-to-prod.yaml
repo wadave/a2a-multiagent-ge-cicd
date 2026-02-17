@@ -57,14 +57,17 @@ steps:
             --set-env-vars "PROJECT_ID=${PROJECT_ID}"
         fi
 
-  # 3. Extract Cloud Run URLs to pass to Agents
+  # 3. Extract Cloud Run URLs to pass to Agents (append /mcp/ path with trailing slash for FastMCP servers)
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     entrypoint: bash
     args:
       - '-c'
       - |
-        gcloud run services describe cocktail-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' > /workspace/cocktail_url.txt
-        gcloud run services describe weather-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' > /workspace/weather_url.txt
+        # Get Cloud Run URLs and append /mcp/ path (with trailing slash) for FastMCP servers
+        echo "$$(gcloud run services describe cocktail-mcp-ge-prod --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/cocktail_url.txt
+        echo "$$(gcloud run services describe weather-mcp-ge-prod --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/weather_url.txt
+        echo "Cocktail MCP URL: $$(cat /workspace/cocktail_url.txt)"
+        echo "Weather MCP URL: $$(cat /workspace/weather_url.txt)"
     id: 'get-mcp-urls'
     waitFor: ['deploy-cocktail-mcp', 'deploy-weather-mcp']
 
@@ -81,7 +84,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['get-mcp-urls']
 
-  # 5. Deploy the Agent Engine Apps (skip if already deployed with this commit)
+  # 5. Deploy the Agent Engine Apps using latest src code
   - name: "python:3.13-slim"
     id: deploy-agents
     entrypoint: /bin/bash
@@ -89,7 +92,10 @@ steps:
       - "-c"
       - |
         set -e
+        # Export requirements from the a2a_agents project
         uv export --project ./src/a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > src/requirements.txt
+
+        # Set environment variables from MCP URLs and substitutions
         export CT_MCP_SERVER_URL=$$(cat /workspace/cocktail_url.txt)
         export WEA_MCP_SERVER_URL=$$(cat /workspace/weather_url.txt)
         export PROJECT_ID="${_PROD_PROJECT_ID}"
@@ -97,12 +103,16 @@ steps:
         export APP_SERVICE_ACCOUNT="${_APP_SERVICE_ACCOUNT_PROD}"
         export COMMIT_SHA="${COMMIT_SHA}"
         export DISPLAY_NAME_SUFFIX="Prod"
+        export BUCKET_NAME="${_PROD_PROJECT_ID}-bucket"
+        export REQUIREMENTS_FILE="requirements.txt"
+
+        # Deploy agents using latest src code
         uv run python deployment/deploy_agents.py
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['install-dependencies']
 
-  # 6. Build and deploy the Frontend (skip if already deployed with this commit)
+  # 6. Build and deploy the Frontend with dynamic agent ID
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-frontend'
     entrypoint: bash
@@ -125,7 +135,7 @@ steps:
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
           echo "Frontend already deployed with commit ${COMMIT_SHA}, skipping."
         else
-          echo "Building and deploying Frontend..."
+          echo "Building and deploying Frontend with latest src code..."
           docker build -t $$IMAGE ./src/frontend
           docker push $$IMAGE
           gcloud run deploy a2a-frontend-ge2-prod \
@@ -138,26 +148,29 @@ steps:
         fi
     waitFor: ['deploy-agents']
 
-  # 7. Register the Agent to Gemini Enterprise Agentspace
+  # 7. Register the Agent to Gemini Enterprise Agentspace (Optional - only if configured)
   - name: "python:3.12-slim"
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
-        # Ensure gcloud is available and authorized if needed
+        # Check if Agentspace registration is configured
+        if [ -z "${_AS_APP}" ] || [ -z "${_AUTH_ID}" ]; then
+          echo "Skipping Agentspace registration - _AS_APP or _AUTH_ID not configured"
+          exit 0
+        fi
+
+        # Install gcloud and requests
         apt-get update && apt-get install -y curl apt-transport-https ca-certificates gnupg
         curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
         echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
         apt-get update && apt-get install -y google-cloud-cli
-
-        # Install dependencies for requests
         pip install requests
 
         HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
         HOSTING_URL="https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${HOSTING_AGENT_ID}/environments/default"
 
-        # NOTE: Make sure _AS_APP, _PROJECT_NUMBER, and _AUTH_ID are configured in substitutions
         python scripts/register_agent_to_agentspace.py \
           --project-number=${_PROJECT_NUMBER} \
           --app-id=${_AS_APP} \
@@ -169,13 +182,16 @@ steps:
     id: 'register-agent'
     waitFor: ['deploy-agents']
 
+# Substitutions are provided by Terraform - DO NOT hard-code values here
+# These are set in deployment/terraform/build_triggers.tf
+# Optional: _AS_APP and _AUTH_ID for Agentspace registration
 substitutions:
-  _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
-  _REGION: us-central1
-  # These must be configured for the Agentspace Registration to succeed:
-  _PROJECT_NUMBER: YOUR_PROJECT_NUMBER
-  _AS_APP: YOUR_AGENT_SPACE_APP_ID
-  _AUTH_ID: YOUR_OAUTH_CLIENT_ID
+  _PROD_PROJECT_ID: ${_PROD_PROJECT_ID}
+  _REGION: ${_REGION}
+  _PROJECT_NUMBER: ${_PROJECT_NUMBER}
+  _APP_SERVICE_ACCOUNT_PROD: ${_APP_SERVICE_ACCOUNT_PROD}
+  _AS_APP: ""
+  _AUTH_ID: ""
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:

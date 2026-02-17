@@ -54,9 +54,18 @@ logging.info("Monkeypatched google.auth.default for local testing")
 # --- Test Logic ---
 
 async def test_hosting_agent_local():
-    # Set remote agent URLs (deployed instances)
-    os.environ["CT_AGENT_URL"] = "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/8358349955399680000/a2a"
-    os.environ["WEA_AGENT_URL"] = "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5302657608228798464/a2a"
+    # Load environment variables from .env file
+    load_dotenv(os.path.join(os.path.dirname(__file__), "../../src/a2a_agents/.env"))
+
+    # Set remote agent URLs from environment or use defaults
+    ct_url = os.environ.get("CT_AGENT_URL", "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5883340485182881792/a2a")
+    wea_url = os.environ.get("WEA_AGENT_URL", "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/1906662014214733824/a2a")
+
+    os.environ["CT_AGENT_URL"] = ct_url
+    os.environ["WEA_AGENT_URL"] = wea_url
+
+    print(f"Using Cocktail Agent: {ct_url}")
+    print(f"Using Weather Agent: {wea_url}")
     
     print("\n--- Creating Hosting Agent ---")
     agent = create_hosting_agent()

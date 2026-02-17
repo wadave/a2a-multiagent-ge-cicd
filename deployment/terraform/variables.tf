@@ -127,3 +127,37 @@ variable "feedback_logs_filter" {
   default     = "jsonPayload.log_type=\"feedback\" jsonPayload.service_name=\"a2a-multiagent-ge-cicd\""
 }
 
+variable "staging_project_number" {
+  type        = string
+  description = "Project number for staging project"
+}
+
+variable "prod_project_number" {
+  type        = string
+  description = "Project number for production project"
+}
+
+variable "as_app_staging" {
+  type        = string
+  description = "Agent Space App ID for staging (optional)"
+  default     = ""
+}
+
+variable "as_app_prod" {
+  type        = string
+  description = "Agent Space App ID for production (optional)"
+  default     = ""
+}
+
+variable "auth_id_staging" {
+  type        = string
+  description = "OAuth Client ID for staging Agentspace registration (optional)"
+  default     = ""
+}
+
+variable "auth_id_prod" {
+  type        = string
+  description = "OAuth Client ID for production Agentspace registration (optional)"
+  default     = ""
+}
+

@@ -76,10 +76,10 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {
     _STAGING_PROJECT_ID            = var.staging_project_id
+    _PROJECT_NUMBER                = var.staging_project_number
     _LOGS_BUCKET_NAME_STAGING      = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].name
     _APP_SERVICE_ACCOUNT_STAGING   = google_service_account.app_sa["staging"].email
     _REGION                        = var.region
-    # Your other CD Pipeline substitutions
   }
   depends_on = [
     resource.google_project_service.cicd_services, 
@@ -107,10 +107,12 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   }
   substitutions = {
     _PROD_PROJECT_ID             = var.prod_project_id
+    _PROJECT_NUMBER              = var.prod_project_number
     _LOGS_BUCKET_NAME_PROD       = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name
     _APP_SERVICE_ACCOUNT_PROD    = google_service_account.app_sa["prod"].email
     _REGION                      = var.region
-    # Your other Deploy to Prod Pipeline substitutions
+    _AS_APP                      = var.as_app_prod
+    _AUTH_ID                     = var.auth_id_prod
   }
   depends_on = [
     resource.google_project_service.cicd_services, 

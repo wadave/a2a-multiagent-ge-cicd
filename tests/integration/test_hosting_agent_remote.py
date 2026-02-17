@@ -143,14 +143,13 @@ async def main():
         ("What is the weather in San Francisco, CA?", "weather"),
         ("Tell me about a Margarita cocktail", "cocktail"),
         ("What's in a Mojito?", "cocktail"),
-        ("What is the capital of France?", "out_of_scope"),
     ]
 
     # Hosting agents to test
     agents_to_test = [
         {
-            "name": "Hosting Agent GE 20260217-0521",
-            "url": "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/6764920112240656384/a2a"
+            "name": "Hosting Agent GE2 Staging",
+            "url": "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/9013342226205376512/a2a"
         },
     ]
 

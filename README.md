@@ -3,7 +3,7 @@
 > **DISCLAIMER**: THIS DEMO IS INTENDED FOR DEMONSTRATION PURPOSES ONLY. IT IS NOT INTENDED FOR USE IN A PRODUCTION ENVIRONMENT.
 >
 > **Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
-
+>
 > **Important**: Please run it in **Cloud Shell** to ensure you have the proper permissions.
 
 This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
@@ -66,9 +66,11 @@ The agents interact with the following MCP servers:
 │       ├── apis.tf               #   GCP API enablement
 │       ├── backend.tf            #   Terraform state backend (GCS)
 │       ├── build_triggers.tf     #   Cloud Build triggers
+│       ├── frontend.tf           #   Frontend Cloud Run service
 │       ├── github.tf             #   GitHub connection + repository
 │       ├── iam.tf                #   IAM role assignments
 │       ├── locals.tf             #   Agent definitions, service lists
+│       ├── mcp_iam.tf            #   MCP server IAM permissions
 │       ├── providers.tf          #   Provider versions
 │       ├── service.tf            #   Agent Engine resources
 │       ├── service_accounts.tf   #   Service accounts (CICD + app)
@@ -92,11 +94,15 @@ The agents interact with the following MCP servers:
 │       ├── cocktail_mcp_server/
 │       └── weather_mcp_server/
 ├── tests/
+│   ├── test_config.py            # Shared test configuration
+│   ├── test_utils.py             # Shared test utilities
+│   ├── run_all_tests.py          # Master test runner
 │   ├── conftest.py               # Adds src/ to sys.path
 │   ├── unit/                     # Unit tests (agent cards, servers, logic)
 │   ├── integration/              # Integration tests (local + remote agents)
 │   ├── eval/                     # Evaluation suite (evalsets, config)
 │   └── load_test/                # Locust load tests
+├── .env.example                  # Environment variable template
 ├── pyproject.toml
 ├── uv.lock
 ├── Makefile
@@ -112,76 +118,174 @@ Here are some example questions you can ask the chatbot:
 - `Please get weather forecast for New York`
 - `What is the weather in Houston, TX?`
 
-## Setup and Deployment
+---
+
+## Quick Start
 
 ### Prerequisites
 
-1. [Python 3.12+](https://www.python.org/downloads/)
+1. [Python 3.13+](https://www.python.org/downloads/)
 2. [gcloud SDK](https://cloud.google.com/sdk/docs/install)
 3. [Terraform](https://developer.hashicorp.com/terraform/install) (>= 1.0)
 4. [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
-5. A GitHub repository for your source code
-6. Three Google Cloud projects:
+5. [Docker](https://docs.docker.com/get-docker/) (for local testing and deployment)
+6. A GitHub repository for your source code
+7. Three Google Cloud projects:
    - **CI/CD project** — runs Cloud Build pipelines
    - **Staging project** — staging environment for agents and services
    - **Production project** — production environment
 
-### Local Testing
+---
 
-#### 1. Install dependencies
+## Configuration Setup
+
+### Understanding Environment Variables
+
+This project uses environment variables in multiple locations:
+
+1. **Local Testing**: `src/a2a_agents/.env` and `src/frontend/.env`
+2. **Deployment**: `.env.deploy` (for manual deployments)
+3. **CI/CD**: Terraform variables → Cloud Build substitutions
+4. **Tests**: `tests/test_config.py` (loads from `.env.deploy`)
+
+### Step 1: Get Your GCP Information
+
+Before configuring, gather this information:
 
 ```bash
+# Get your project IDs
+gcloud projects list
+
+# Get project numbers (needed for agents)
+gcloud projects describe YOUR_STAGING_PROJECT_ID --format="value(projectNumber)"
+gcloud projects describe YOUR_PROD_PROJECT_ID --format="value(projectNumber)"
+
+# Note your region (typically us-central1)
+REGION="us-central1"
+```
+
+### Step 2: Configure for Local Testing
+
+#### Option A: Copy Example Files
+
+```bash
+# Copy environment templates
+cp .env.example .env.deploy
+cp src/a2a_agents/.env.example src/a2a_agents/.env
+cp src/frontend/.env.example src/frontend/.env
+```
+
+#### Option B: Create from Scratch
+
+**Create `.env.deploy`:**
+
+```bash
+# Deployment environment variables
+PROJECT_ID=your-staging-project-id
+GOOGLE_CLOUD_REGION=us-central1
+APP_SERVICE_ACCOUNT=a2a-multiagent-ge-cicd-app@your-staging-project-id.iam.gserviceaccount.com
+DISPLAY_NAME_SUFFIX=Staging
+BUCKET_NAME=your-staging-project-id-bucket
+
+# MCP Server URLs (will be set after MCP servers are deployed)
+# IMPORTANT: Include /mcp/ with trailing slash
+CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
+WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
+```
+
+**Create `src/a2a_agents/.env`:**
+
+```bash
+# Vertex AI Configuration
+GOOGLE_GENAI_USE_VERTEXAI=True
+GOOGLE_CLOUD_PROJECT=your-staging-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Project Configuration
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+
+# MCP Server URLs (after deployment)
+# IMPORTANT: Include /mcp/ with trailing slash
+CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
+WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
+
+# Agent URLs (after agent deployment)
+CT_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/COCKTAIL_AGENT_ID/a2a
+WEA_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/WEATHER_AGENT_ID/a2a
+```
+
+**Create `src/frontend/.env`:**
+
+```bash
+# Frontend Configuration
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Hosting Agent ID (after agent deployment)
+AGENT_ENGINE_ID=your-hosting-agent-id
+```
+
+### Step 3: Install Dependencies
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install project dependencies
 uv sync
 ```
 
-#### 2. Configure environment
-
-Create `src/a2a_agents/.env` with:
+### Step 4: Test Configuration
 
 ```bash
-GOOGLE_GENAI_USE_VERTEXAI=True
-GOOGLE_CLOUD_PROJECT="your-project-id"
-GOOGLE_CLOUD_LOCATION="us-central1"
-PROJECT_ID="your-project-id"
-PROJECT_NUMBER="your-project-number"
-CT_AGENT_URL="https://..."   # Deployed cocktail agent A2A URL
-WEA_AGENT_URL="https://..."  # Deployed weather agent A2A URL
-CT_MCP_SERVER_URL="https://..."
-WEA_MCP_SERVER_URL="https://..."
-```
-
-#### 3. Run hosting agent locally
-
-```bash
-python tests/integration/test_hosting_agent_local.py
-```
-
-#### 4. Run the frontend locally
-
-Create `src/frontend/.env` with:
-
-```bash
-PROJECT_ID="your-project-id"
-PROJECT_NUMBER="your-project-number"
-AGENT_ENGINE_ID="your-hosting-agent-engine-id"
-GOOGLE_CLOUD_LOCATION="us-central1"
-```
-
-```bash
-cd src/frontend
-uv run python main.py
-# Open http://localhost:8080
+# Test that configuration loads correctly
+cd tests
+python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(f'LOCATION: {LOCATION}')"
 ```
 
 ---
 
-## CI/CD Setup
+## CI/CD Setup with Google Cloud Build V2
 
-The project uses **Terraform** for infrastructure provisioning and **Cloud Build** for CI/CD pipelines.
+You have two options for setting up CI/CD:
 
-### Step 1: Create a GitHub PAT Secret
+### Option 1: Quick Setup with agent-starter-pack (Recommended)
 
-Create a GitHub Personal Access Token and store it in Secret Manager in your CI/CD project:
+The easiest way to set up CI/CD is using the `agent-starter-pack` tool:
+
+```bash
+# Install agent-starter-pack
+uvx agent-starter-pack setup-cicd
+
+# Follow the interactive prompts to:
+# 1. Connect GitHub repository to Cloud Build
+# 2. Create necessary service accounts
+# 3. Set up Cloud Build triggers
+# 4. Configure permissions
+```
+
+This tool will:
+- ✅ Create Cloud Build V2 GitHub connection
+- ✅ Link your GitHub repository
+- ✅ Set up service accounts with proper permissions
+- ✅ Create Cloud Build triggers for PR checks, staging, and production
+- ✅ Configure all necessary IAM roles
+
+### Option 2: Manual Setup with Terraform
+
+If you prefer manual control or need customization:
+
+#### Step 1: Create GitHub Personal Access Token (PAT)
+
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token with scopes:
+   - `repo` (Full control of private repositories)
+   - `admin:repo_hook` (Full control of repository hooks)
+3. Save the token securely
+
+**Store PAT in Secret Manager:**
 
 ```bash
 echo -n "YOUR_GITHUB_PAT" | gcloud secrets create github-pat \
@@ -189,161 +293,598 @@ echo -n "YOUR_GITHUB_PAT" | gcloud secrets create github-pat \
   --data-file=-
 ```
 
-### Step 2: Configure Terraform Variables
+#### Step 2: Configure Terraform Variables
 
-Create a `terraform.tfvars` file in `deployment/terraform/`:
+Create `deployment/terraform/terraform.tfvars`:
+
+```bash
+cd deployment/terraform
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Edit `terraform.tfvars`:
 
 ```hcl
-# Project IDs
+# Required: Project Configuration
 cicd_runner_project_id = "your-cicd-project-id"
 staging_project_id     = "your-staging-project-id"
 prod_project_id        = "your-prod-project-id"
 
-# GitHub
-repository_owner          = "your-github-org-or-username"
-repository_name           = "a2a-multiagent-ge-cicd"
-github_app_installation_id = "YOUR_GITHUB_APP_INSTALLATION_ID"
-github_pat_secret_id       = "github-pat"
+# Required: Project Numbers (NOT IDs)
+# Get with: gcloud projects describe PROJECT_ID --format="value(projectNumber)"
+staging_project_number = "123456789012"
+prod_project_number    = "234567890123"
 
-# Set to true on first run to create the Cloud Build GitHub connection
+# Required: GitHub Configuration
+repository_owner = "your-github-username-or-org"
+repository_name  = "a2a-multiagent-ge-cicd"
+
+# Cloud Build GitHub Connection
+# Set to true on FIRST RUN to create the connection
 create_cb_connection = true
+host_connection_name = "a2a-multiagent-ge-cicd-github-connection"
+
+# GitHub PAT Secret (created above)
+github_pat_secret_id = "github-pat"
+
+# GitHub App Installation ID (optional - if using GitHub App instead of PAT)
+# github_app_installation_id = "12345678"
 
 # Set to true only if you want Terraform to create the GitHub repo
 create_repository = false
 
 # Region
 region = "us-central1"
+
+# Optional: Frontend Configuration (leave empty for CI/CD deployment)
+frontend_image_staging     = ""
+frontend_image_prod        = ""
+hosting_agent_id_staging   = ""
+hosting_agent_id_prod      = ""
+
+# Optional: Agentspace Registration (for production)
+as_app_staging   = ""
+as_app_prod      = ""
+auth_id_staging  = ""
+auth_id_prod     = ""
 ```
 
-### Step 3: Configure Terraform Backend
+#### Step 3: Configure Terraform Backend
 
-Update `deployment/terraform/backend.tf` with your GCS bucket for Terraform state:
+Create or update `deployment/terraform/backend.tf`:
 
 ```hcl
 terraform {
   backend "gcs" {
-    bucket = "your-project-terraform-state"
+    bucket = "your-cicd-project-terraform-state"
     prefix = "a2a-multiagent-ge-cicd"
   }
 }
 ```
 
-Create the state bucket if it doesn't exist:
+**Create the state bucket:**
 
 ```bash
-gcloud storage buckets create gs://your-project-terraform-state \
+gcloud storage buckets create gs://your-cicd-project-terraform-state \
   --project=YOUR_CICD_PROJECT_ID \
-  --location=us-central1
+  --location=us-central1 \
+  --uniform-bucket-level-access
 ```
 
-### Step 4: Run Terraform
+#### Step 4: Initialize and Apply Terraform
 
 ```bash
 cd deployment/terraform
 
+# Initialize Terraform
 terraform init
-terraform plan    # Review the changes
-terraform apply   # Apply the changes
+
+# Review the changes
+terraform plan
+
+# Apply the configuration
+terraform apply
 ```
 
-This provisions:
+**What Terraform Creates:**
 
 | Resource | Description |
-|---|---|
-| **Service Accounts** | `{project-name}-cb` (CI/CD runner), `{project-name}-app` (agent runner, per env) |
-| **IAM Roles** | AI Platform, Storage, Logging, Cloud Build roles for each SA |
-| **GCP APIs** | Vertex AI, Cloud Run, Cloud Build, BigQuery, etc. |
-| **Cloud Build Triggers** | PR checks, staging CD, production deployment |
-| **GitHub Connection** | Cloud Build ↔ GitHub repository link |
-| **Agent Engine Resources** | 3 agents × 2 environments = 6 Reasoning Engine resources (initialized with dummy code) |
+|----------|-------------|
+| **Service Accounts** | `a2a-multiagent-ge-cicd-cb` (CI/CD runner), `a2a-multiagent-ge-cicd-app` (agents, per environment) |
+| **IAM Roles** | AI Platform, Storage, Logging, Cloud Build roles for service accounts |
+| **GCP APIs** | Vertex AI, Cloud Run, Cloud Build, BigQuery, Secret Manager, etc. |
+| **Cloud Build Connection** | GitHub OAuth2 connection for Cloud Build V2 |
+| **GitHub Repository Link** | Links your repo to Cloud Build |
+| **Cloud Build Triggers** | 3 triggers: PR checks, staging deployment, production deployment |
 | **Storage Buckets** | Logs and feedback data buckets per project |
-| **Telemetry** | BigQuery datasets + Cloud Logging sinks for observability |
+| **BigQuery** | Telemetry datasets with Cloud Logging sinks |
+| **MCP IAM** | Permissions for agents to invoke MCP services |
 
-### Step 5: Verify Cloud Build Triggers
+#### Step 5: Authorize GitHub Connection
 
-After Terraform completes, verify the triggers were created:
+After Terraform creates the Cloud Build GitHub connection:
+
+1. Go to Cloud Console → Cloud Build → Triggers
+2. You'll see a prompt to authorize the GitHub connection
+3. Click "Authorize" and complete the GitHub OAuth flow
+4. Grant access to your repository
+
+Alternatively, use the CLI:
 
 ```bash
+# Get the connection name
+gcloud builds connections list \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+
+# Follow the authorization URL if needed
+```
+
+#### Step 6: Verify Setup
+
+```bash
+# Check Cloud Build triggers
 gcloud builds triggers list \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+
+# Check GitHub connection
+gcloud builds connections describe a2a-multiagent-ge-cicd-github-connection \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+
+# Check repository linkage
+gcloud builds repositories list \
+  --connection=a2a-multiagent-ge-cicd-github-connection \
   --project=YOUR_CICD_PROJECT_ID \
   --region=us-central1
 ```
 
 You should see three triggers:
 
-| Trigger | Branch | Pipeline |
-|---|---|---|
-| `pr-a2a-multiagent-ge-cicd` | PR → `main` | `.cloudbuild/pr_checks.yaml` |
-| `cd-a2a-multiagent-ge-cicd` | Push → `staging` | `.cloudbuild/staging.yaml` |
-| `deploy-a2a-multiagent-ge-cicd` | Manual (approval required) | `.cloudbuild/deploy-to-prod.yaml` |
+| Trigger | Event | Pipeline | Description |
+|---------|-------|----------|-------------|
+| `pr-a2a-multiagent-ge-cicd` | PR → `main` | `.cloudbuild/pr_checks.yaml` | Runs unit and integration tests |
+| `cd-a2a-multiagent-ge-cicd` | Push → `staging` | `.cloudbuild/staging.yaml` | Deploys to staging environment |
+| `deploy-a2a-multiagent-ge-cicd` | Manual trigger | `.cloudbuild/deploy-to-prod.yaml` | Deploys to production (requires approval) |
 
 ---
 
-## CI/CD Pipelines
+## CI/CD Pipeline Details
 
-### PR Checks (`.cloudbuild/pr_checks.yaml`)
+### How Environment Variables Flow Through CI/CD
 
-Triggered on pull requests to `main`. Runs:
+```
+terraform.tfvars (your configuration)
+    ↓
+Terraform Variables (variables.tf)
+    ↓
+Build Trigger Substitutions (build_triggers.tf)
+    ↓
+Cloud Build YAML (_SUBSTITUTION_VARS)
+    ↓
+Runtime Environment Variables (export)
+    ↓
+Deployment Scripts (deploy_agents.py)
+    ↓
+Deployed Resources
+```
 
+**Example Flow:**
+
+1. You set `staging_project_id = "my-staging"` in `terraform.tfvars`
+2. Terraform sets `_STAGING_PROJECT_ID = var.staging_project_id` in build trigger
+3. Cloud Build YAML uses `${_STAGING_PROJECT_ID}`
+4. Deployment script gets `PROJECT_ID=my-staging` as environment variable
+5. Agents deploy to `my-staging` project
+
+### PR Checks Pipeline (`.cloudbuild/pr_checks.yaml`)
+
+**Triggered:** When opening/updating a PR to `main` branch
+
+**Steps:**
 1. Install dependencies (`uv sync --locked`)
-2. Unit tests (`pytest tests/unit`)
-3. Integration tests (`pytest tests/integration`)
+2. Run unit tests (`pytest tests/unit`)
+3. Run integration tests (`pytest tests/integration`)
 
-### Staging Deployment (`.cloudbuild/staging.yaml`)
+**Configuration:** No substitutions needed (reads from repo)
 
-Triggered on push to `staging` branch. Runs:
+### Staging Deployment Pipeline (`.cloudbuild/staging.yaml`)
 
-1. **Build & deploy MCP servers** to Cloud Run (`cocktail-mcp-ge-staging`, `weather-mcp-ge-staging`)
-2. **Extract MCP URLs** from deployed Cloud Run services
-3. **Install Python dependencies** (`uv sync`)
-4. **Deploy agents** to Agent Engine via `deployment/deploy_agents.py`
-   - Cocktail Agent GE2, Weather Agent GE2, Hosting Agent GE2
-5. **Build & deploy frontend** to Cloud Run (`a2a-frontend-ge2`)
+**Triggered:** When pushing to `staging` branch
 
-### Production Deployment (`.cloudbuild/deploy-to-prod.yaml`)
+**Steps:**
+1. **Build & Deploy MCP Servers**
+   - Builds Docker images for Cocktail and Weather MCP servers
+   - Deploys to Cloud Run: `cocktail-mcp-ge-staging`, `weather-mcp-ge-staging`
+   - Uses staging service account
 
-Triggered manually with **approval required**. Same steps as staging but targeting the production project:
+2. **Extract MCP URLs**
+   - Queries Cloud Run to get service URLs
+   - **Automatically appends `/mcp/` with trailing slash**
+   - Saves URLs to workspace for agent deployment
 
-- MCP servers: `cocktail-mcp-ge-prod`, `weather-mcp-ge-prod`
-- Frontend: `a2a-frontend-ge2-prod`
-- Agents: `*Agent GE2 Prod`
-- Registers the hosting agent to Gemini Enterprise Agentspace
+3. **Install Dependencies**
+   - Installs Python packages with `uv sync`
 
-### Naming Convention
+4. **Deploy Agents**
+   - Exports environment variables from substitutions:
+     ```bash
+     export CT_MCP_SERVER_URL=$(cat /workspace/cocktail_url.txt)
+     export WEA_MCP_SERVER_URL=$(cat /workspace/weather_url.txt)
+     export PROJECT_ID="${_STAGING_PROJECT_ID}"
+     export GOOGLE_CLOUD_REGION="${_REGION}"
+     export APP_SERVICE_ACCOUNT="${_APP_SERVICE_ACCOUNT_STAGING}"
+     export DISPLAY_NAME_SUFFIX="Staging"
+     ```
+   - Runs `deployment/deploy_agents.py` which deploys:
+     - Cocktail Agent GE2 Staging
+     - Weather Agent GE2 Staging
+     - Hosting Agent GE2 Staging
+   - Writes hosting agent ID to `/workspace/hosting_agent_id.txt`
 
-| Component | Staging | Production |
-|---|---|---|
-| Cocktail MCP | `cocktail-mcp-ge-staging` | `cocktail-mcp-ge-prod` |
-| Weather MCP | `weather-mcp-ge-staging` | `weather-mcp-ge-prod` |
-| Frontend | `a2a-frontend-ge2` | `a2a-frontend-ge2-prod` |
-| Cocktail Agent Engine | `Cocktail Agent GE2 Staging` | `Cocktail Agent GE2 Prod` |
-| Weather Agent Engine | `Weather Agent GE2 Staging` | `Weather Agent GE2 Prod` |
-| Hosting Agent Engine | `Hosting Agent GE2 Staging` | `Hosting Agent GE2 Prod` |
+5. **Build & Deploy Frontend**
+   - Builds Docker image for Gradio frontend
+   - Reads hosting agent ID from workspace
+   - Deploys to Cloud Run: `a2a-frontend-ge2`
+   - Sets environment variables with agent ID
 
----
+**Substitutions (from Terraform):**
+- `_STAGING_PROJECT_ID` → Staging project ID
+- `_PROJECT_NUMBER` → Staging project number
+- `_REGION` → Deployment region
+- `_APP_SERVICE_ACCOUNT_STAGING` → Staging service account email
 
-## Running Tests
+### Production Deployment Pipeline (`.cloudbuild/deploy-to-prod.yaml`)
+
+**Triggered:** Manually (requires approval)
+
+**Steps:** Same as staging but:
+- Uses production project and service account
+- Deploys to: `cocktail-mcp-ge-prod`, `weather-mcp-ge-prod`, `a2a-frontend-ge2-prod`
+- Adds `DISPLAY_NAME_SUFFIX="Prod"` to agents
+- Optionally registers hosting agent to Agentspace (if `_AS_APP` and `_AUTH_ID` configured)
+
+**Substitutions (from Terraform):**
+- `_PROD_PROJECT_ID` → Production project ID
+- `_PROJECT_NUMBER` → Production project number
+- `_REGION` → Deployment region
+- `_APP_SERVICE_ACCOUNT_PROD` → Production service account email
+- `_AS_APP` → Agentspace App ID (optional)
+- `_AUTH_ID` → OAuth Client ID (optional)
+
+### Important: MCP URL Trailing Slash
+
+Both pipelines automatically append `/mcp/` with trailing slash to MCP URLs:
 
 ```bash
-# Unit tests
-uv run pytest tests/unit/
+# In .cloudbuild/staging.yaml and deploy-to-prod.yaml
+echo "$(gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/cocktail_url.txt
+```
 
-# Integration tests (requires deployed agents)
-uv run pytest tests/integration/ -m integration
+**Why this matters:**
+- FastMCP servers require `/mcp/` (with trailing slash)
+- Without trailing slash → 307 Redirect → MCP session creation fails
+- With trailing slash → Direct connection → MCP tools work ✅
 
-# Hosting agent local test
+---
+
+## Local Testing
+
+### Testing Individual Components
+
+#### 1. Test MCP Servers Locally
+
+```bash
+# Test Cocktail MCP Server
+cd src/mcp_servers/cocktail_mcp_server
+uv run python main.py
+# Uses stdio transport
+
+# Test Weather MCP Server
+cd src/mcp_servers/weather_mcp_server
+uv run python main.py
+# Uses stdio transport
+```
+
+#### 2. Test Agents Locally
+
+**Prerequisites:**
+- Agents must be deployed (to get agent IDs and URLs)
+- MCP servers must be deployed (to get MCP URLs)
+
+**Set up `src/a2a_agents/.env`:**
+
+```bash
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Get these after deploying agents
+CT_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/COCKTAIL_AGENT_ID/a2a
+WEA_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/WEATHER_AGENT_ID/a2a
+
+# MCP URLs (with trailing slash!)
+CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
+WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
+```
+
+**Run local tests:**
+
+```bash
+# Test hosting agent locally
 python tests/integration/test_hosting_agent_local.py
 
-# Hosting agent remote test (requires deployed ADK agent)
-python tests/integration/test_hosting_agent_remote_adk.py
+# Test deployed agents remotely
+python tests/integration/test_deployed_agents.py
 
-# Evaluation
-uv run python tests/eval/run_evaluation.py
-
-# Load tests (requires locust)
-cd tests/load_test
-locust -f load_test_comprehensive.py
+# Test deployed hosting agent
+python tests/integration/test_hosting_agent.py
 ```
+
+#### 3. Test Frontend Locally
+
+**Set up `src/frontend/.env`:**
+
+```bash
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+AGENT_ENGINE_ID=your-hosting-agent-id
+GOOGLE_CLOUD_LOCATION=us-central1
+```
+
+**Run frontend:**
+
+```bash
+cd src/frontend
+uv run python main.py
+# Open http://localhost:8080
+```
+
+Test with queries:
+- "weather in Houston, TX"
+- "what's in a margarita?"
+- "list a random cocktail"
+
+### Running All Tests
+
+```bash
+# From project root
+cd tests
+
+# Run all integration tests
+python run_all_tests.py
+
+# Or run specific test suites
+python integration/test_deployed_agents.py
+python integration/test_hosting_agent.py
+python integration/test_deployed_frontend.py
+
+# Run with pytest
+pytest tests/unit/
+pytest tests/integration/
+```
+
+---
+
+## Deployment
+
+### Deploy to Staging
+
+1. **Push to staging branch:**
+
+   ```bash
+   git checkout staging
+   git merge main
+   git push origin staging
+   ```
+
+2. **Monitor deployment:**
+
+   ```bash
+   # Watch build progress
+   gcloud builds list --project=YOUR_CICD_PROJECT_ID --ongoing
+
+   # View specific build logs
+   gcloud builds log BUILD_ID --project=YOUR_CICD_PROJECT_ID
+   ```
+
+3. **Verify deployment:**
+
+   After deployment completes:
+
+   ```bash
+   # Check MCP servers
+   gcloud run services list --project=YOUR_STAGING_PROJECT_ID --region=us-central1
+
+   # Check agents
+   gcloud ai reasoning-engines list --project=YOUR_STAGING_PROJECT_ID --region=us-central1
+
+   # Get frontend URL
+   gcloud run services describe a2a-frontend-ge2 \
+     --project=YOUR_STAGING_PROJECT_ID \
+     --region=us-central1 \
+     --format="value(status.url)"
+   ```
+
+4. **Test frontend:**
+
+   Open the frontend URL and test queries.
+
+### Deploy to Production
+
+1. **Trigger production deployment:**
+
+   ```bash
+   gcloud builds triggers run deploy-a2a-multiagent-ge-cicd \
+     --project=YOUR_CICD_PROJECT_ID \
+     --region=us-central1 \
+     --branch=main
+   ```
+
+2. **Approve deployment:**
+
+   The production pipeline requires manual approval:
+   - Go to Cloud Console → Cloud Build → Builds
+   - Find the running build
+   - Click "Review" and "Approve"
+
+3. **Monitor and verify:**
+
+   Same steps as staging but check production project.
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. MCP Connection Failures
+
+**Symptom:** Agents fail with "Failed to create MCP session" or "307 Redirect" errors
+
+**Solution:** Verify MCP URLs have trailing slash:
+
+```bash
+# Check MCP URLs in deployment
+grep "MCP_SERVER_URL" .env.deploy
+# Should show: https://...run.app/mcp/ (with trailing slash)
+```
+
+#### 2. Frontend Can't Connect to Agent
+
+**Symptom:** Frontend shows "No response" or connection errors
+
+**Solution:** Verify agent ID in frontend environment:
+
+```bash
+# Get hosting agent ID
+gcloud ai reasoning-engines list \
+  --project=YOUR_PROJECT_ID \
+  --region=us-central1 \
+  --filter="displayName:Hosting"
+
+# Update src/frontend/.env with correct AGENT_ENGINE_ID
+```
+
+#### 3. Cloud Build Trigger Not Working
+
+**Symptom:** Push to branch doesn't trigger build
+
+**Solution:** Check trigger configuration:
+
+```bash
+# List triggers
+gcloud builds triggers list --project=YOUR_CICD_PROJECT_ID --region=us-central1
+
+# Describe specific trigger
+gcloud builds triggers describe cd-a2a-multiagent-ge-cicd \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+
+# Check GitHub connection
+gcloud builds connections describe a2a-multiagent-ge-cicd-github-connection \
+  --project=YOUR_CICD_PROJECT_ID \
+  --region=us-central1
+```
+
+Verify:
+- ✅ GitHub connection is authorized
+- ✅ Repository is linked
+- ✅ Trigger is enabled
+- ✅ Branch name matches (e.g., `staging`)
+
+#### 4. Permission Errors
+
+**Symptom:** "Permission denied" or "Forbidden" errors
+
+**Solution:** Check service account permissions:
+
+```bash
+# Check app service account
+gcloud projects get-iam-policy YOUR_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:a2a-multiagent-ge-cicd-app@*"
+
+# Check CI/CD service account
+gcloud projects get-iam-policy YOUR_CICD_PROJECT_ID \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:serviceAccount:a2a-multiagent-ge-cicd-cb@*"
+```
+
+Re-apply Terraform if permissions are missing:
+
+```bash
+cd deployment/terraform
+terraform apply
+```
+
+### Debugging Tips
+
+**View Cloud Build logs:**
+
+```bash
+gcloud builds log BUILD_ID --project=YOUR_CICD_PROJECT_ID
+```
+
+**View agent logs:**
+
+```bash
+# Get agent resource name
+gcloud ai reasoning-engines list \
+  --project=YOUR_PROJECT_ID \
+  --region=us-central1
+
+# View logs
+gcloud logging read "resource.type=aiplatform.googleapis.com/ReasoningEngine AND resource.labels.reasoning_engine_id=AGENT_ID" \
+  --project=YOUR_PROJECT_ID \
+  --limit=50
+```
+
+**View Cloud Run logs:**
+
+```bash
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=a2a-frontend-ge2" \
+  --project=YOUR_PROJECT_ID \
+  --limit=50
+```
+
+---
+
+## Resource Naming Conventions
+
+| Component | Staging | Production |
+|-----------|---------|------------|
+| **Cocktail MCP** | `cocktail-mcp-ge-staging` | `cocktail-mcp-ge-prod` |
+| **Weather MCP** | `weather-mcp-ge-staging` | `weather-mcp-ge-prod` |
+| **Frontend** | `a2a-frontend-ge2` | `a2a-frontend-ge2-prod` |
+| **Cocktail Agent** | `Cocktail Agent GE2 Staging` | `Cocktail Agent GE2 Prod` |
+| **Weather Agent** | `Weather Agent GE2 Staging` | `Weather Agent GE2 Prod` |
+| **Hosting Agent** | `Hosting Agent GE2 Staging` | `Hosting Agent GE2 Prod` |
+
+---
+
+## Additional Resources
+
+- **[CICD_CONFIGURATION.md](deployment/CICD_CONFIGURATION.md)** - Detailed CI/CD configuration guide
+- **[FRONTEND_DEPLOYMENT.md](FRONTEND_DEPLOYMENT.md)** - Frontend deployment guide
+- **[CICD_UPDATES_SUMMARY.md](CICD_UPDATES_SUMMARY.md)** - Summary of CI/CD updates
+- **[tests/README.md](tests/README.md)** - Testing guide and test framework docs
+- **[tests/MIGRATION_SUMMARY.md](tests/MIGRATION_SUMMARY.md)** - Test consolidation summary
+
+---
+
+## Security Best Practices
+
+1. **Never commit secrets** - Use Secret Manager for sensitive data
+2. **Use service accounts** - Don't use personal credentials in automation
+3. **Principle of least privilege** - Grant minimal required permissions
+4. **Validate external input** - Treat A2A responses as untrusted (see Disclaimer)
+5. **Enable audit logging** - Monitor access to resources
+6. **Use private GCS buckets** - Enable uniform bucket-level access
+7. **Review IAM regularly** - Remove unused permissions
+
+---
 
 ## Disclaimer
 
@@ -352,6 +893,8 @@ locust -f load_test_comprehensive.py
 All data received from an external agent—including but not limited to its AgentCard, messages, artifacts, and task statuses—should be handled as untrusted input. For example, a malicious agent could provide an AgentCard containing crafted data in its fields (e.g., description, name, skills.description). If this data is used without sanitization to construct prompts for a Large Language Model (LLM), it could expose your application to prompt injection attacks. Failure to properly validate and sanitize this data before use can introduce security vulnerabilities into your application.
 
 Developers are responsible for implementing appropriate security measures, such as input validation and secure handling of credentials to protect their systems and users.
+
+---
 
 ## License
 

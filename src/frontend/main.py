@@ -67,15 +67,20 @@ async def get_response_from_agent(
             session_id=session_id,
             message=query,
         ):
-            # Extract text from events
-            content = event.get("content", {})
-            parts = content.get("parts", [])
-            if parts:
-                text = parts[0].get("text")
-                function_call = parts[0].get("functionCall")
-                # Only capture text responses, not function calls
-                if text and not function_call:
-                    final_text = text
+            logger.debug(f"Event: {event}")
+            # Extract text from events — handle both dict and object formats
+            content = event.get("content", {}) if isinstance(event, dict) else getattr(event, "content", {})
+            if content:
+                parts = content.get("parts", []) if isinstance(content, dict) else getattr(content, "parts", [])
+                for part in parts:
+                    if isinstance(part, dict):
+                        text = part.get("text")
+                        has_fn = part.get("functionCall") or part.get("function_call")
+                    else:
+                        text = getattr(part, "text", None)
+                        has_fn = getattr(part, "function_call", None) or getattr(part, "functionCall", None)
+                    if text and not has_fn:
+                        final_text = text
 
         if final_text:
             logger.info(f"Response received: {final_text[:50]}...")

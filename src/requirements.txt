@@ -28,7 +28,7 @@ docstring-parser==0.17.0
 executing==2.2.1
 fastapi==0.129.0
 ffmpy==1.0.0
-filelock==3.24.0
+filelock==3.24.2
 flake8==7.3.0
 fsspec==2026.2.0
 google-adk==1.25.0
@@ -117,14 +117,14 @@ pathspec==1.0.4
 pexpect==4.9.0 ; sys_platform != 'emscripten' and sys_platform != 'win32'
 pillow==12.1.1
 pip==26.0.1
-platformdirs==4.9.1
+platformdirs==4.9.2
 prompt-toolkit==3.0.52
 proto-plus==1.27.1
 protobuf==6.33.5
 psutil==7.2.2
 ptyprocess==0.7.0 ; sys_platform != 'emscripten' and sys_platform != 'win32'
 pure-eval==0.2.3
-pyarrow==23.0.0
+pyarrow==23.0.1
 pyasn1==0.6.2
 pyasn1-modules==0.4.2
 pycodestyle==2.14.0
@@ -146,7 +146,7 @@ pytz==2025.2
 pywin32==311 ; sys_platform == 'win32'
 pyyaml==6.0.3
 pyzmq==27.1.0
-referencing==0.37.0
+referencing==0.36.2
 requests==2.32.5
 requests-oauthlib==2.0.0
 rich==14.3.2
@@ -170,8 +170,8 @@ tomlkit==0.13.3
 tornado==6.5.4
 tqdm==4.67.3
 traitlets==5.14.3
-typer==0.23.1
-typer-slim==0.23.1
+typer==0.24.0
+typer-slim==0.24.0
 typing-extensions==4.15.0
 typing-inspection==0.4.2
 tzdata==2025.3 ; sys_platform == 'emscripten' or sys_platform == 'win32'
@@ -183,4 +183,3 @@ watchdog==6.0.0
 wcwidth==0.6.0
 websockets==15.0.1
 zipp==3.23.0
-vertexai

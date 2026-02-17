@@ -57,14 +57,17 @@ steps:
             --set-env-vars "PROJECT_ID=${PROJECT_ID}"
         fi
 
-  # 3. Extract Cloud Run URLs to pass to Agents
+  # 3. Extract Cloud Run URLs to pass to Agents (append /mcp/ path with trailing slash for FastMCP servers)
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     entrypoint: bash
     args:
       - '-c'
       - |
-        gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION} --format 'value(status.url)' > /workspace/cocktail_url.txt
-        gcloud run services describe weather-mcp-ge-staging --region ${_REGION} --format 'value(status.url)' > /workspace/weather_url.txt
+        # Get Cloud Run URLs and append /mcp/ path (with trailing slash) for FastMCP servers
+        echo "$$(gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/cocktail_url.txt
+        echo "$$(gcloud run services describe weather-mcp-ge-staging --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/weather_url.txt
+        echo "Cocktail MCP URL: $$(cat /workspace/cocktail_url.txt)"
+        echo "Weather MCP URL: $$(cat /workspace/weather_url.txt)"
     id: 'get-mcp-urls'
     waitFor: ['deploy-cocktail-mcp', 'deploy-weather-mcp']
 
@@ -81,7 +84,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['get-mcp-urls']
 
-  # 5. Deploy the Agent Engine Apps (skip if already deployed)
+  # 5. Deploy the Agent Engine Apps using latest src code
   - name: "python:3.13-slim"
     id: deploy-agents
     entrypoint: /bin/bash
@@ -89,19 +92,26 @@ steps:
       - "-c"
       - |
         set -e
+        # Export requirements from the a2a_agents project
         uv export --project ./src/a2a_agents --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate > src/requirements.txt
+
+        # Set environment variables from MCP URLs and substitutions
         export CT_MCP_SERVER_URL=$$(cat /workspace/cocktail_url.txt)
         export WEA_MCP_SERVER_URL=$$(cat /workspace/weather_url.txt)
         export PROJECT_ID="${_STAGING_PROJECT_ID}"
         export GOOGLE_CLOUD_REGION="${_REGION}"
         export APP_SERVICE_ACCOUNT="${_APP_SERVICE_ACCOUNT_STAGING}"
         export DISPLAY_NAME_SUFFIX="Staging"
+        export BUCKET_NAME="${_STAGING_PROJECT_ID}-bucket"
+        export REQUIREMENTS_FILE="requirements.txt"
+
+        # Deploy agents using latest src code
         uv run python deployment/deploy_agents.py
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
     waitFor: ['install-dependencies']
 
-  # 6. Build and deploy the Frontend (skip if already deployed with this commit)
+  # 6. Build and deploy the Frontend with dynamic agent ID
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-frontend'
     entrypoint: bash
@@ -124,7 +134,7 @@ steps:
         if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
           echo "Frontend already deployed with commit ${COMMIT_SHA}, skipping."
         else
-          echo "Building and deploying Frontend..."
+          echo "Building and deploying Frontend with latest src code..."
           docker build -t $$IMAGE ./src/frontend
           docker push $$IMAGE
           gcloud run deploy a2a-frontend-ge2 \
@@ -137,12 +147,13 @@ steps:
         fi
     waitFor: ['deploy-agents']
 
+# Substitutions are provided by Terraform - DO NOT hard-code values here
+# These are set in deployment/terraform/build_triggers.tf
 substitutions:
-  _STAGING_PROJECT_ID: dw-genai-dev
-  _REGION: us-central1
-  _PROJECT_NUMBER: '496235138247'
-  _AS_APP: enterprise-search-17489269_1748926990192
-  _AUTH_ID: testID0001
+  _STAGING_PROJECT_ID: ${_STAGING_PROJECT_ID}
+  _REGION: ${_REGION}
+  _PROJECT_NUMBER: ${_PROJECT_NUMBER}
+  _APP_SERVICE_ACCOUNT_STAGING: ${_APP_SERVICE_ACCOUNT_STAGING}
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:

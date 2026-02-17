@@ -1,0 +1,48 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and fill in your values
+
+# Required: Project Configuration
+prod_project_id     = "your-prod-project-id"
+staging_project_id  = "your-staging-project-id"
+cicd_runner_project_id = "your-cicd-project-id"
+
+# Required: Project Numbers (NOT IDs)
+# Get project number: gcloud projects describe PROJECT_ID --format="value(projectNumber)"
+staging_project_number = "123456789012"
+prod_project_number    = "123456789013"
+
+# Required: Region for deployment
+region = "us-central1"
+
+# Required: GitHub Configuration
+repository_owner = "your-github-username-or-org"
+repository_name  = "your-repo-name"
+
+# GitHub Connection Configuration
+# Set create_cb_connection = true if you need to create a new Cloud Build connection
+create_cb_connection = false
+host_connection_name = "a2a-multiagent-ge-cicd-github-connection"
+
+# If using GitHub App:
+# github_app_installation_id = "12345678"
+
+# If using Personal Access Token:
+# github_pat_secret_id = "your-github-pat-secret"
+
+# Optional: Agentspace Registration (for production)
+# Leave empty if not using Agentspace
+as_app_staging   = ""
+as_app_prod      = ""
+auth_id_staging  = ""
+auth_id_prod     = ""
+
+# Optional: Custom service account roles
+# Uncomment and modify if you need different permissions
+# app_sa_roles = [
+#   "roles/aiplatform.user",
+#   "roles/discoveryengine.editor",
+#   "roles/logging.logWriter",
+#   "roles/cloudtrace.agent",
+#   "roles/storage.admin",
+#   "roles/serviceusage.serviceUsageConsumer",
+# ]
