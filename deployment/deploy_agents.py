@@ -230,7 +230,7 @@ def main():
     # --- Deploy Cocktail Agent ---
     ct_agent_name = deploy_agent(
         client=client,
-        display_name=f"Cocktail Agent GE {display_name_suffix}",
+        display_name=f"Cocktail Agent GE2 {display_name_suffix}",
         agent_card=cocktail_agent_card,
         executor_builder=CocktailAgentExecutor,
         project_id=project_id,
@@ -245,7 +245,7 @@ def main():
     # --- Deploy Weather Agent ---
     wea_agent_name = deploy_agent(
         client=client,
-        display_name=f"Weather Agent GE {display_name_suffix}",
+        display_name=f"Weather Agent GE2 {display_name_suffix}",
         agent_card=weather_agent_card,
         executor_builder=WeatherAgentExecutor,
         project_id=project_id,
@@ -264,7 +264,7 @@ def main():
     # --- Deploy Hosting Agent ---
     host_agent_name = deploy_adk_agent(
         client=client,
-        display_name=f"Hosting Agent GE {display_name_suffix}",
+        display_name=f"Hosting Agent GE2 {display_name_suffix}",
         agent_factory=create_hosting_agent,
         project_id=project_id,
         location=location,

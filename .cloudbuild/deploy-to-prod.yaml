@@ -114,7 +114,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
         # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge-prod \
+        CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge2-prod \
           --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
 
         HOSTING_AGENT_RESOURCE=$$(cat /workspace/hosting_agent_id.txt)
@@ -128,7 +128,7 @@ steps:
           echo "Building and deploying Frontend..."
           docker build -t $$IMAGE ./src/frontend
           docker push $$IMAGE
-          gcloud run deploy a2a-frontend-ge-prod \
+          gcloud run deploy a2a-frontend-ge2-prod \
             --image $$IMAGE \
             --region ${_REGION} \
             --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
@@ -163,7 +163,7 @@ steps:
           --app-id=${_AS_APP} \
           --agent-url="$${HOSTING_URL}" \
           --agent-name="a2a-agent" \
-          --display-name="A2A Agent GE Prod" \
+          --display-name="A2A Agent GE2 Prod" \
           --description="A2A CI/CD Hosting Agent deployed via Cloud Build" \
           --auth-id=${_AUTH_ID}
     id: 'register-agent'
