@@ -14,8 +14,7 @@
 """Deploy all A2A agents to Vertex AI Agent Engine.
 
 This script deploys the Cocktail, Weather, and Hosting agents sequentially.
-It uses the A2aAgent wrapper from vertexai.preview.reasoning_engines, which
-handles A2A protocol translation automatically.
+It creates new agents or updates existing ones if they already exist.
 
 Environment variables:
     PROJECT_ID: GCP project ID for deployment
@@ -31,7 +30,6 @@ Environment variables:
 import logging
 import os
 import sys
-import time
 
 # Add src to path so that a2a_agents are importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -52,6 +50,16 @@ from a2a_agents.weather_agent.weather_agent_executor import WeatherAgentExecutor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+REQUIREMENTS = [
+    "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
+    "a2a-sdk >= 0.3.4",
+    "pydantic>=2.11.9",
+    "cloudpickle>=3.1.1",
+    "google-auth-oauthlib>=1.2.2",
+    "google-auth[openid]>=2.40.3",
+    "google-genai>=1.36.0",
+]
+
 
 def list_existing_agents(client):
     """List all existing agents and return a dict keyed by display name."""
@@ -64,6 +72,23 @@ def list_existing_agents(client):
     except Exception as e:
         logger.warning(f"Failed to list existing agents: {e}")
     return agents
+
+
+def _build_config(display_name, description, service_account, location, bucket_name, env_vars):
+    """Build the common deployment config dict."""
+    return {
+        "display_name": display_name,
+        "description": description,
+        "service_account": service_account,
+        "requirements": REQUIREMENTS,
+        "http_options": {
+            "base_url": f"https://{location}-aiplatform.googleapis.com",
+            "api_version": "v1beta1",
+        },
+        "staging_bucket": f"gs://{bucket_name}",
+        "env_vars": {k: v for k, v in env_vars.items() if v},
+        "extra_packages": ["a2a_agents"],
+    }
 
 
 def deploy_agent(
@@ -79,49 +104,29 @@ def deploy_agent(
     extra_env_vars,
     existing_agents,
 ):
-    """Deploy an A2A agent using the A2aAgent template."""
-    if display_name in existing_agents:
-        agent_name = existing_agents[display_name]
-        logger.info(f"Agent '{display_name}' already exists: {agent_name}")
-        return agent_name
-
+    """Deploy or update an A2A agent using the A2aAgent template."""
     a2a_agent = A2aAgent(
         agent_card=agent_card, agent_executor_builder=executor_builder
     )
 
-    env_vars = {
-        "PROJECT_ID": project_id,
-        "LOCATION": location,
-        "BUCKET": bucket_name,
-    }
+    env_vars = {"PROJECT_ID": project_id, "LOCATION": location, "BUCKET": bucket_name}
     env_vars.update(extra_env_vars)
-    env_vars = {k: v for k, v in env_vars.items() if v}
 
-    logger.info(f"Deploying '{display_name}' (A2A Template)...")
+    config = _build_config(
+        display_name, a2a_agent.agent_card.description,
+        service_account, location, bucket_name, env_vars,
+    )
 
-    config = {
-        "display_name": display_name,
-        "description": a2a_agent.agent_card.description,
-        "service_account": service_account,
-        "requirements": [
-            "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
-            "a2a-sdk >= 0.3.4",
-            "pydantic>=2.11.9",
-            "cloudpickle>=3.1.1",
-            "google-auth-oauthlib>=1.2.2",
-            "google-auth[openid]>=2.40.3",
-            "google-genai>=1.36.0",
-        ],
-        "http_options": {
-            "base_url": f"https://{location}-aiplatform.googleapis.com",
-            "api_version": "v1beta1",
-        },
-        "staging_bucket": f"gs://{bucket_name}",
-        "env_vars": env_vars,
-        "extra_packages": ["a2a_agents"],
-    }
-    
-    remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+    if display_name in existing_agents:
+        agent_name = existing_agents[display_name]
+        logger.info(f"Updating existing agent '{display_name}': {agent_name}")
+        remote_agent = client.agent_engines.update(
+            name=agent_name, agent=a2a_agent, config=config,
+        )
+    else:
+        logger.info(f"Creating new agent '{display_name}'...")
+        remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+
     agent_name = remote_agent.api_resource.name
     logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
     return agent_name
@@ -139,16 +144,10 @@ def deploy_adk_agent(
     extra_env_vars,
     existing_agents,
 ):
-    """Deploy an ADK agent to Vertex AI Agent Engine."""
-    if display_name in existing_agents:
-        agent_name = existing_agents[display_name]
-        logger.info(f"Agent '{display_name}' already exists: {agent_name}")
-        return agent_name
-
-    # Set env vars temporarily so the factory picks them up if needed
+    """Deploy or update an ADK agent to Vertex AI Agent Engine."""
+    # Set env vars temporarily so the factory picks them up
     original_env = os.environ.copy()
     os.environ.update(extra_env_vars)
-    
     try:
         agent_engine = agent_factory()
     finally:
@@ -162,33 +161,22 @@ def deploy_adk_agent(
         "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
     }
     env_vars.update(extra_env_vars)
-    env_vars = {k: v for k, v in env_vars.items() if v}
 
-    logger.info(f"Deploying '{display_name}' (ADK Model)...")
+    config = _build_config(
+        display_name, agent_engine.description,
+        service_account, location, bucket_name, env_vars,
+    )
 
-    config = {
-        "display_name": display_name,
-        "description": agent_engine.description,
-        "service_account": service_account,
-        "requirements": [
-            "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
-            "a2a-sdk >= 0.3.4",
-            "pydantic>=2.11.9",
-            "cloudpickle>=3.1.1",
-            "google-auth-oauthlib>=1.2.2",
-            "google-auth[openid]>=2.40.3",
-            "google-genai>=1.36.0",
-        ],
-        "http_options": {
-            "base_url": f"https://{location}-aiplatform.googleapis.com",
-            "api_version": "v1beta1",
-        },
-        "staging_bucket": f"gs://{bucket_name}",
-        "env_vars": env_vars,
-        "extra_packages": ["a2a_agents"],
-    }
+    if display_name in existing_agents:
+        agent_name = existing_agents[display_name]
+        logger.info(f"Updating existing agent '{display_name}': {agent_name}")
+        remote_agent = client.agent_engines.update(
+            name=agent_name, agent=agent_engine, config=config,
+        )
+    else:
+        logger.info(f"Creating new agent '{display_name}'...")
+        remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
 
-    remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
     agent_name = remote_agent.api_resource.name
     logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
     return agent_name
