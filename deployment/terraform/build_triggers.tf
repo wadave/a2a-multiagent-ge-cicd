@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Fetch project numbers automatically from project IDs
+data "google_project" "staging" {
+  project_id = var.staging_project_id
+}
+
+data "google_project" "prod" {
+  project_id = var.prod_project_id
+}
+
 # a. Create PR checks trigger
 resource "google_cloudbuild_trigger" "pr_checks" {
   name            = "pr-${var.project_name}"
@@ -76,7 +85,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {
     _STAGING_PROJECT_ID            = var.staging_project_id
-    _PROJECT_NUMBER                = var.staging_project_number
+    _PROJECT_NUMBER                = data.google_project.staging.number
     _LOGS_BUCKET_NAME_STAGING      = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].name
     _APP_SERVICE_ACCOUNT_STAGING   = google_service_account.app_sa["staging"].email
     _REGION                        = var.region
@@ -107,7 +116,7 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   }
   substitutions = {
     _PROD_PROJECT_ID             = var.prod_project_id
-    _PROJECT_NUMBER              = var.prod_project_number
+    _PROJECT_NUMBER              = data.google_project.prod.number
     _LOGS_BUCKET_NAME_PROD       = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name
     _APP_SERVICE_ACCOUNT_PROD    = google_service_account.app_sa["prod"].email
     _REGION                      = var.region

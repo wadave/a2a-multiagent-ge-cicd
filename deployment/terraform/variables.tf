@@ -129,12 +129,14 @@ variable "feedback_logs_filter" {
 
 variable "staging_project_number" {
   type        = string
-  description = "Project number for staging project"
+  description = "(DEPRECATED - Auto-fetched from project ID) Project number for staging project"
+  default     = ""
 }
 
 variable "prod_project_number" {
   type        = string
-  description = "Project number for production project"
+  description = "(DEPRECATED - Auto-fetched from project ID) Project number for production project"
+  default     = ""
 }
 
 variable "as_app_staging" {
