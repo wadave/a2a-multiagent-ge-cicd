@@ -77,7 +77,7 @@ def create_hosting_agent() -> LlmAgent:
 
     client_factory = MyClientFactory(
         ClientConfig(
-            supported_transports=[TransportProtocol.http_json, TransportProtocol.jsonrpc],
+            supported_transports=[TransportProtocol.jsonrpc, TransportProtocol.http_json],
             use_client_preference=True,
         )
     )
