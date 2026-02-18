@@ -197,7 +197,9 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Create a custom client factory that will attach our dynamic Auth object
             def custom_httpx_client_factory(**kwargs):
                 from mcp.client.streamable_http import create_mcp_http_client
-                # Get the default client
+                # Override timeout to 120 seconds for MCP connections
+                kwargs['timeout'] = 120.0
+                # Get the default client with extended timeout
                 client = create_mcp_http_client(**kwargs)
                 # Ensure it uses our dynamic Auth handler for OIDC
                 client.auth = TokenManagerAuth(self.token_manager)

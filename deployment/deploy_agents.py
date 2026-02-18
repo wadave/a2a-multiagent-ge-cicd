@@ -120,9 +120,17 @@ def deploy_agent(
     if display_name in existing_agents:
         agent_name = existing_agents[display_name]
         logger.info(f"Updating existing agent '{display_name}': {agent_name}")
-        remote_agent = client.agent_engines.update(
-            name=agent_name, agent=a2a_agent, config=config,
-        )
+        try:
+            remote_agent = client.agent_engines.update(
+                name=agent_name, agent=a2a_agent, config=config,
+            )
+        except Exception as e:
+            # Handle 404 or other errors by creating a new agent
+            if "404" in str(e) or "does not exist" in str(e).lower():
+                logger.warning(f"Agent {agent_name} not found. Creating new agent instead.")
+                remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+            else:
+                raise
     else:
         logger.info(f"Creating new agent '{display_name}'...")
         remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
@@ -170,9 +178,17 @@ def deploy_adk_agent(
     if display_name in existing_agents:
         agent_name = existing_agents[display_name]
         logger.info(f"Updating existing agent '{display_name}': {agent_name}")
-        remote_agent = client.agent_engines.update(
-            name=agent_name, agent=agent_engine, config=config,
-        )
+        try:
+            remote_agent = client.agent_engines.update(
+                name=agent_name, agent=agent_engine, config=config,
+            )
+        except Exception as e:
+            # Handle 404 or other errors by creating a new agent
+            if "404" in str(e) or "does not exist" in str(e).lower():
+                logger.warning(f"Agent {agent_name} not found. Creating new agent instead.")
+                remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
+            else:
+                raise
     else:
         logger.info(f"Creating new agent '{display_name}'...")
         remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
