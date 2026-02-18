@@ -14,6 +14,7 @@
 # Author: Dave Wang
 import logging
 import time
+import httpx
 from abc import ABC, abstractmethod
 from typing import Dict, NoReturn
 
@@ -125,6 +126,20 @@ class TokenManager:
         return {"Authorization": self._token} if self._token else {}
 
 
+class TokenManagerAuth(httpx.Auth):
+    """An httpx.Auth implementation that dynamically attaches the latest OIDC token."""
+    
+    def __init__(self, token_manager):
+        self.token_manager = token_manager
+        
+    def auth_flow(self, request: httpx.Request):
+        # Always fetch the fresh header and apply it to the request
+        headers = self.token_manager.get_headers()
+        for k, v in headers.items():
+            request.headers[k] = v
+        yield request
+
+
 class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
     """Base Agent Executor that bridges A2A protocol with ADK agents using MCP tools.
 
@@ -174,11 +189,19 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             # Initialize token manager for automatic token refresh
             self.token_manager = TokenManager(audience=mcp_url)
-            mcp_auth_headers = self.token_manager.get_headers()
+
+            # Create a custom client factory that will attach our dynamic Auth object
+            def custom_httpx_client_factory(**kwargs):
+                from mcp.client.streamable_http import create_mcp_http_client
+                # Get the default client
+                client = create_mcp_http_client(**kwargs)
+                # Ensure it uses our dynamic Auth handler for OIDC
+                client.auth = TokenManagerAuth(self.token_manager)
+                return client
 
             mcp_server_params = StreamableHTTPConnectionParams(
                 url=mcp_url,
-                headers=mcp_auth_headers,
+                httpx_client_factory=custom_httpx_client_factory
             )
 
             # Create the actual agent
@@ -285,21 +308,16 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             raise
 
     def _refresh_mcp_auth(self) -> None:
-        """Refresh MCP authentication headers using the token manager."""
+        """Fetch MCP authentication headers to ensure token is valid."""
         if self.token_manager is None:
             logging.warning("TokenManager not initialized, skipping auth refresh")
             return
 
-        # Get fresh headers from token manager (will auto-refresh if expired)
-        fresh_headers = self.token_manager.get_headers()
-
-        # Update the toolset connection params (using private attribute)
-        for tool in self.agent.tools:
-            if isinstance(tool, McpToolset):
-                # Access private attribute to update headers
-                if hasattr(tool._connection_params, "headers"):
-                    tool._connection_params.headers = fresh_headers
-                    logging.debug("Refreshed MCP authentication headers")
+        # Pre-fetch headers from token manager (will auto-refresh if expired)
+        # We don't need to manually inject them into the _connection_params anymore
+        # because the httpx.Auth object attached to StreamableHTTP will do it lazily.
+        self.token_manager.get_headers()
+        logging.debug("Refreshed MCP authentication headers")
 
     async def _get_or_create_session(self, context_id: str):
         """Get existing session or create new one."""
