@@ -63,9 +63,22 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         # Get Cloud Run URLs and append /mcp/ path (with trailing slash) for FastMCP servers
-        echo "$$(gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/cocktail_url.txt
-        echo "$$(gcloud run services describe weather-mcp-ge-staging --region ${_REGION} --format 'value(status.url)')/mcp/" > /workspace/weather_url.txt
+        CT_URL=$$(gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION} --format 'value(status.url)' 2>&1)
+        if [ -z "$$CT_URL" ] || echo "$$CT_URL" | grep -q "ERROR\|NOT_FOUND"; then
+          echo "ERROR: Cocktail MCP service not found or failed to deploy"
+          exit 1
+        fi
+        echo "$${CT_URL}/mcp/" > /workspace/cocktail_url.txt
+
+        WEA_URL=$$(gcloud run services describe weather-mcp-ge-staging --region ${_REGION} --format 'value(status.url)' 2>&1)
+        if [ -z "$$WEA_URL" ] || echo "$$WEA_URL" | grep -q "ERROR\|NOT_FOUND"; then
+          echo "ERROR: Weather MCP service not found or failed to deploy"
+          exit 1
+        fi
+        echo "$${WEA_URL}/mcp/" > /workspace/weather_url.txt
+
         echo "Cocktail MCP URL: $$(cat /workspace/cocktail_url.txt)"
         echo "Weather MCP URL: $$(cat /workspace/weather_url.txt)"
     id: 'get-mcp-urls'

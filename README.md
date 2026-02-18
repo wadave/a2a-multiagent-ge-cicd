@@ -3,8 +3,7 @@
 > **DISCLAIMER**: THIS DEMO IS INTENDED FOR DEMONSTRATION PURPOSES ONLY. IT IS NOT INTENDED FOR USE IN A PRODUCTION ENVIRONMENT.
 >
 > **Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
->
-> **Important**: Please run it in **Cloud Shell** to ensure you have the proper permissions.
+
 
 This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
 
@@ -248,7 +247,7 @@ python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(
 ---
 
 ## CI/CD Setup with Google Cloud Build V2
-
+![cicd_pipeline](asset/google_cloudbuild.jpeg)
 You have two options for setting up CI/CD:
 
 ### Option 1: Quick Setup with agent-starter-pack (Recommended)
