@@ -44,7 +44,7 @@ class GoogleAuthRefresh(httpx.Auth):
 
 
 class MyClientFactory(ClientFactory):
-    def create(self, card, consumers=None, interceptors=None):
+    def create(self, card, consumers=None, interceptors=None, extensions=None):
         if not self._config.httpx_client:
             self._config.httpx_client=httpx.AsyncClient(
                 timeout=60,
@@ -52,7 +52,7 @@ class MyClientFactory(ClientFactory):
                 auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform']) 
             )
             self._register_defaults(self._config.supported_transports)
-        return super().create(card, consumers, interceptors)
+        return super().create(card, consumers, interceptors, extensions)
 
 
 class MyRemoteA2aAgent(RemoteA2aAgent):

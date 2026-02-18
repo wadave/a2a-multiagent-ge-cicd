@@ -95,7 +95,12 @@ class TokenManager:
             refresh_buffer_seconds: Refresh token this many seconds before expiry.
                                    Default is 300 (5 minutes).
         """
-        self.audience = audience
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(audience)
+        
+        # Cloud Run OIDC audience is just the base URL (scheme://netloc)
+        # Without any trailing paths like /mcp or /
+        self.audience = f"{parsed_url.scheme}://{parsed_url.netloc}"
         self.refresh_buffer_seconds = refresh_buffer_seconds
         self._token = None
         self._expiry = None

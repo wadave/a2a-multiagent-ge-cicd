@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ID = "dw-genai-dev"
 LOCATION = "us-central1"
-RESOURCE_NAME = "projects/496235138247/locations/us-central1/reasoningEngines/3868261126911295488"
+RESOURCE_NAME = "projects/496235138247/locations/us-central1/reasoningEngines/6246548758255894528"
 
 
 async def main():
