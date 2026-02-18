@@ -188,7 +188,11 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 )
 
             # Initialize token manager for automatic token refresh
-            self.token_manager = TokenManager(audience=mcp_url)
+            # Extract base URL for audience (Cloud Run OIDC tokens need base URL without path)
+            from urllib.parse import urlparse
+            parsed_url = urlparse(mcp_url)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+            self.token_manager = TokenManager(audience=base_url)
 
             # Create a custom client factory that will attach our dynamic Auth object
             def custom_httpx_client_factory(**kwargs):
