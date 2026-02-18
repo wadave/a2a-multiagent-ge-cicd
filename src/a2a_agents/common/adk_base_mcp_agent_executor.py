@@ -207,6 +207,8 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             mcp_server_params = StreamableHTTPConnectionParams(
                 url=mcp_url,
+                timeout=120.0,
+                sse_read_timeout=300.0,
                 httpx_client_factory=custom_httpx_client_factory
             )
 
