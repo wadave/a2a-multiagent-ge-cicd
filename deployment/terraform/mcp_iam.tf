@@ -15,10 +15,17 @@
 # IAM permissions for Agent Engines to invoke MCP Cloud Run services
 
 locals {
-  # Define MCP services that need IAM permissions
-  mcp_services = {
-    cocktail = "cocktail-mcp-ge-staging"
-    weather  = "weather-mcp-ge-staging"
+  # Define MCP services per environment
+  # Each environment has its own Cloud Run MCP services
+  mcp_service_types = ["cocktail", "weather"]
+
+  mcp_service_bindings = {
+    for pair in setproduct(keys(local.deploy_project_ids), local.mcp_service_types) :
+    "${pair[0]}-${pair[1]}" => {
+      env_key      = pair[0]
+      service_name = "${pair[1]}-mcp-ge-${pair[0]}"
+      project_id   = local.deploy_project_ids[pair[0]]
+    }
   }
 
   # Agent Engine service account (default Vertex AI service account)
@@ -31,14 +38,7 @@ locals {
 
 # Grant Agent Engine SA permission to invoke MCP Cloud Run services
 resource "google_cloud_run_v2_service_iam_member" "agent_engine_mcp_invoker" {
-  for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), keys(local.mcp_services)) :
-    "${pair[0]}-${pair[1]}" => {
-      env_key      = pair[0]
-      service_name = local.mcp_services[pair[1]]
-      project_id   = local.deploy_project_ids[pair[0]]
-    }
-  }
+  for_each = local.mcp_service_bindings
 
   project  = each.value.project_id
   location = var.region
@@ -50,16 +50,9 @@ resource "google_cloud_run_v2_service_iam_member" "agent_engine_mcp_invoker" {
 }
 
 # Also grant App Service Account permission to invoke MCP services
-# (needed if agents use custom service accounts)
+# (needed when agents are deployed with custom service accounts)
 resource "google_cloud_run_v2_service_iam_member" "app_sa_mcp_invoker" {
-  for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), keys(local.mcp_services)) :
-    "${pair[0]}-${pair[1]}" => {
-      env_key      = pair[0]
-      service_name = local.mcp_services[pair[1]]
-      project_id   = local.deploy_project_ids[pair[0]]
-    }
-  }
+  for_each = local.mcp_service_bindings
 
   project  = each.value.project_id
   location = var.region
