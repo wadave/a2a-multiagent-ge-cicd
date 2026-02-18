@@ -44,8 +44,7 @@ async def test_remote_agent():
 
     async with httpx.AsyncClient() as http_client:
         # Get card
-        print("
---- Getting Remote Agent Card ---")
+        print("\n--- Getting Remote Agent Card ---")
         card_url = f"{base_url}/v1/card"
         print(f"GET {card_url}")
         resp = await http_client.get(card_url, headers=headers)
@@ -56,10 +55,14 @@ async def test_remote_agent():
         card = resp.json()
         print(f"Agent: {card.get('name')}")
         print(f"URL: {card.get('url')}")
+
+        # Update base_url from card if available to ensure consistency (Project ID vs Number)
+        if card.get('url'):
+            base_url = card.get('url')
+            print(f"Updated Base URL: {base_url}")
         
         # Send message
-        print("
---- Sending Message ---")
+        print("\n--- Sending Message ---")
         msg_url = f"{base_url}/v1/message:send"
         message_data = {
             "message": {
@@ -83,8 +86,7 @@ async def test_remote_agent():
         print(f"Task started: {task_id}")
 
         # Poll for result
-        print("
---- Polling for Result ---")
+        print("\n--- Polling for Result ---")
         task_url = f"{base_url}/v1/tasks/{task_id}"
         
         for _ in range(30): # Poll for 60 seconds
@@ -102,9 +104,7 @@ async def test_remote_agent():
                 for artifact in artifacts:
                     for part in artifact.get("parts", []):
                         if "text" in part:
-                            print(f"
-Answer:
-{part['text']}")
+                            print(f"\nAnswer:\n{part['text']}")
                 return
             elif state == "TASK_STATE_FAILED":
                 print(f"Task Failed: {task_data}")
