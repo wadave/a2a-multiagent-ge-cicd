@@ -47,9 +47,9 @@ class MyClientFactory(ClientFactory):
     def create(self, card, consumers=None, interceptors=None):
         if not self._config.httpx_client:
             self._config.httpx_client=httpx.AsyncClient(
-                timeout=60,
+                timeout=120,
                 headers={'Content-Type': 'application/json'},
-                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform']) 
+                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform'])
             )
             self._register_defaults(self._config.supported_transports)
         return super().create(card, consumers, interceptors)
@@ -59,9 +59,9 @@ class MyRemoteA2aAgent(RemoteA2aAgent):
     async def _ensure_httpx_client(self) -> httpx.AsyncClient:
         if not self._httpx_client:
             self._httpx_client=httpx.AsyncClient(
-                timeout=60,
+                timeout=120,
                 headers={'Content-Type': 'application/json'},
-                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform']) 
+                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform'])
             )
         return self._httpx_client
 
@@ -118,7 +118,7 @@ def create_hosting_agent() -> LlmAgent:
     """
 
     root_agent = LlmAgent(
-        model="gemini-2.0-flash-001", # Updated to a widely available model
+        model="gemini-2.5-flash",
         name='host_agent',
         instruction=root_instruction,
         description=(
