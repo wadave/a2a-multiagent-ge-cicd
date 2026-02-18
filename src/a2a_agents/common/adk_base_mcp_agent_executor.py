@@ -194,6 +194,11 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             self.token_manager = TokenManager(audience=base_url)
 
+            # Pre-fetch initial auth headers for MCP connection params
+            # These are used by the MCP session manager for initial session creation
+            mcp_auth_headers = self.token_manager.get_headers()
+            logging.info(f"MCP auth headers available: {bool(mcp_auth_headers)}")
+
             # Create a custom client factory that will attach our dynamic Auth object
             def custom_httpx_client_factory(**kwargs):
                 from mcp.client.streamable_http import create_mcp_http_client
@@ -207,6 +212,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             mcp_server_params = StreamableHTTPConnectionParams(
                 url=mcp_url,
+                headers=mcp_auth_headers,
                 timeout=120.0,
                 sse_read_timeout=300.0,
                 httpx_client_factory=custom_httpx_client_factory

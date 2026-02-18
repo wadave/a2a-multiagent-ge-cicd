@@ -242,7 +242,10 @@ def main():
         service_account=service_account,
         bucket_name=bucket_name,
         requirements_file=requirements_file,
-        extra_env_vars={"CT_MCP_SERVER_URL": ct_mcp_url},
+        extra_env_vars={
+            "CT_MCP_SERVER_URL": ct_mcp_url,
+            "CT_REMOTE_MCP_SERVER_NAME": "cocktail-remote-mcp-server",
+        },
         existing_agents=existing_agents,
     )
 
@@ -257,7 +260,10 @@ def main():
         service_account=service_account,
         bucket_name=bucket_name,
         requirements_file=requirements_file,
-        extra_env_vars={"WEA_MCP_SERVER_URL": wea_mcp_url},
+        extra_env_vars={
+            "WEA_MCP_SERVER_URL": wea_mcp_url,
+            "WEATHER_REMOTE_MCP_SERVER_NAME": "weather-remote-mcp-server",
+        },
         existing_agents=existing_agents,
     )
 

@@ -55,7 +55,12 @@ async def test_remote_agent():
         card = resp.json()
         print(f"Agent: {card.get('name')}")
         print(f"URL: {card.get('url')}")
-        
+
+        # Update base_url from card if available to ensure consistency (Project ID vs Number)
+        if card.get('url'):
+            base_url = card.get('url')
+            print(f"Updated Base URL: {base_url}")
+
         # Send message
         print("\n--- Sending Message ---")
         msg_url = f"{base_url}/v1/message:send"
