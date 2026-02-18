@@ -37,13 +37,16 @@ def print_config():
     print("="*80)
     print("TEST CONFIGURATION")
     print("="*80)
-    print(f"Project ID: {PROJECT_ID}")
-    print(f"Project Number: {PROJECT_NUMBER}")
+    print(f"Project ID: {PROJECT_ID or '(not set)'}")
+    print(f"Project Number: {PROJECT_NUMBER or '(not set)'}")
     print(f"Location: {LOCATION}")
-    print(f"Cocktail Agent ID: {COCKTAIL_AGENT_ID}")
-    print(f"Weather Agent ID: {WEATHER_AGENT_ID}")
-    print(f"Hosting Agent ID: {HOSTING_AGENT_ID}")
+    print(f"Cocktail Agent ID: {COCKTAIL_AGENT_ID or '(not set)'}")
+    print(f"Weather Agent ID: {WEATHER_AGENT_ID or '(not set)'}")
+    print(f"Hosting Agent ID: {HOSTING_AGENT_ID or '(not set)'}")
     print("="*80)
+    if not PROJECT_ID or not PROJECT_NUMBER:
+        print("WARNING: PROJECT_ID and PROJECT_NUMBER are required for integration tests.")
+        print("Set them as environment variables or in .env.deploy file.")
     print()
 
 

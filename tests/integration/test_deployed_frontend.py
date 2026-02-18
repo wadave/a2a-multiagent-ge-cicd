@@ -23,14 +23,16 @@ from pathlib import Path
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
 
-from test_config import PROJECT_NUMBER
+from test_config import FRONTEND_URL
 
 
 async def test_frontend_ui():
     """Test the deployed frontend UI."""
 
-    # Frontend URL (constructed from project number)
-    frontend_url = f"https://a2a-frontend-ge2-{PROJECT_NUMBER}.us-central1.run.app"
+    frontend_url = FRONTEND_URL
+    if not frontend_url:
+        print("ERROR: FRONTEND_URL not configured. Set PROJECT_NUMBER env var.")
+        return False
 
     print("="*80)
     print("TESTING DEPLOYED FRONTEND UI")

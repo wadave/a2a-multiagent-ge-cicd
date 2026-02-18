@@ -1,27 +1,32 @@
+"""Local integration test for the Hosting Agent (runs agent in-process)."""
 import asyncio
 import logging
 import os
 import subprocess
 import sys
-from typing import Dict
+from pathlib import Path
 
 # Ensure src is in path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+
+# Add tests directory to path
+tests_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(tests_dir))
+
+from test_config import CT_AGENT_URL, WEA_AGENT_URL
 
 from dotenv import load_dotenv
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-# Import the agent factory
-from a2a_agents.hosting_agent.adk_agent import create_hosting_agent, MyClientFactory
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 import a2a_agents.hosting_agent.adk_agent as adk_agent_module
 
 logging.basicConfig(level=logging.INFO)
 
+
 # --- Monkeypatch Auth for Local Testing ---
-# The adk_agent.py uses MyClientFactory which uses GoogleAuthRefresh (defined in adk_agent.py)
-# We need to patch GoogleAuthRefresh or the default() call inside it.
 
 def mock_get_gcloud_token() -> str:
     try:
@@ -32,22 +37,22 @@ def mock_get_gcloud_token() -> str:
         logging.error(f"Failed to get gcloud token: {e}")
         return ""
 
+
 class MockCredentials:
     def __init__(self, token):
         self.token = token
         self.valid = True
-    
+
     def refresh(self, request):
         self.token = mock_get_gcloud_token()
+
 
 def mock_default(scopes=None):
     token = mock_get_gcloud_token()
     return MockCredentials(token), "mock-project"
 
+
 # Patch google.auth.default used in adk_agent.py
-# Note: adk_agent.py imports default from google.auth
-# We need to patch it where it is used.
-# It is used inside GoogleAuthRefresh.__init__
 adk_agent_module.default = mock_default
 logging.info("Monkeypatched google.auth.default for local testing")
 
@@ -57,33 +62,35 @@ async def test_hosting_agent_local():
     # Load environment variables from .env file
     load_dotenv(os.path.join(os.path.dirname(__file__), "../../src/a2a_agents/.env"))
 
-    # Set remote agent URLs from environment or use defaults
-    ct_url = os.environ.get("CT_AGENT_URL", "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5883340485182881792/a2a")
-    wea_url = os.environ.get("WEA_AGENT_URL", "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/1906662014214733824/a2a")
+    ct_url = os.environ.get("CT_AGENT_URL") or CT_AGENT_URL
+    wea_url = os.environ.get("WEA_AGENT_URL") or WEA_AGENT_URL
+
+    if not ct_url or not wea_url:
+        print("ERROR: CT_AGENT_URL and WEA_AGENT_URL must be set (env vars or test_config).")
+        sys.exit(1)
 
     os.environ["CT_AGENT_URL"] = ct_url
     os.environ["WEA_AGENT_URL"] = wea_url
 
     print(f"Using Cocktail Agent: {ct_url}")
     print(f"Using Weather Agent: {wea_url}")
-    
+
     print("\n--- Creating Hosting Agent ---")
     agent = create_hosting_agent()
     print(f"Agent created: {agent.name}")
     print(f"Sub-agents: {[sa.name for sa in agent.sub_agents]}")
 
     print("\n--- Running Hosting Agent (Local) ---")
-    
+
     runner = Runner(
         app_name=agent.name,
         agent=agent,
         session_service=InMemorySessionService(),
     )
-    
+
     session_id = "test-session-local"
     user_id = "local-user"
-    
-    # Create session
+
     await runner.session_service.create_session(
         app_name=agent.name, user_id=user_id, session_id=session_id
     )
@@ -91,9 +98,9 @@ async def test_hosting_agent_local():
     # Test 1: Weather
     query = "What is the weather in San Francisco?"
     print(f"\nUser Query: {query}")
-    
+
     content = types.Content(role="user", parts=[types.Part(text=query)])
-    
+
     async for event in runner.run_async(
         session_id=session_id,
         user_id=user_id,
@@ -119,9 +126,9 @@ async def test_hosting_agent_local():
     # Test 2: Cocktail
     query = "List a random cocktail"
     print(f"\nUser Query: {query}")
-    
+
     content = types.Content(role="user", parts=[types.Part(text=query)])
-    
+
     async for event in runner.run_async(
         session_id=session_id,
         user_id=user_id,

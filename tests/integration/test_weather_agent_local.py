@@ -1,13 +1,21 @@
+"""Local integration test for the Weather Agent (runs agent in-process via A2aAgent)."""
 import asyncio
 import json
 import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict
 
 # Ensure src is in path
-sys.path.insert(0, os.path.abspath("src"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
+
+# Add tests directory to path
+tests_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(tests_dir))
+
+from test_config import WEA_MCP_SERVER_URL
 
 from starlette.requests import Request
 from vertexai.preview.reasoning_engines import A2aAgent
@@ -69,10 +77,16 @@ def build_get_request(path_params: dict[str, str]) -> Request:
 # --- Test Logic ---
 
 async def test_agent_locally():
-    # Set env var for MCP URL
-    os.environ["WEA_MCP_SERVER_URL"] = "https://weather-mcp-staging-lxo6yz2aha-uc.a.run.app/mcp/"
-    
-    print("\n--- Initializing A2aAgent (Weather) ---")
+    mcp_url = os.environ.get("WEA_MCP_SERVER_URL") or WEA_MCP_SERVER_URL
+
+    if not mcp_url:
+        print("ERROR: WEA_MCP_SERVER_URL must be set (env var or test_config).")
+        sys.exit(1)
+
+    os.environ["WEA_MCP_SERVER_URL"] = mcp_url
+
+    print(f"\n--- Initializing A2aAgent (Weather) ---")
+    print(f"MCP URL: {mcp_url}")
     a2a_agent = A2aAgent(
         agent_card=weather_agent_card, agent_executor_builder=WeatherAgentExecutor
     )
@@ -95,19 +109,19 @@ async def test_agent_locally():
     }
     request = build_post_request(message_data)
     response = await a2a_agent.on_message_send(request=request, context=None)
-    
+
     task_id = response["task"]["id"]
     print(f"Task ID: {task_id}")
 
     print("\n--- Polling for Result ---")
     task_data = {"id": task_id}
-    
+
     for _ in range(15):
         request = build_get_request(task_data)
         response = await a2a_agent.on_get_task(request=request, context=None)
         state = response.get("status", {}).get("state")
         print(f"Task State: {state}")
-        
+
         if state == "TASK_STATE_COMPLETED":
             for artifact in response.get("artifacts", []):
                 if artifact["parts"] and "text" in artifact["parts"][0]:
@@ -116,7 +130,7 @@ async def test_agent_locally():
         elif state == "TASK_STATE_FAILED":
             print(f"Task Failed: {response}")
             break
-        
+
         await asyncio.sleep(2)
 
 if __name__ == "__main__":

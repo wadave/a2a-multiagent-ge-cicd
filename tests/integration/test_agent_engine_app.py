@@ -14,10 +14,16 @@
 
 import logging
 import os
+import sys
+from pathlib import Path
 
 import pytest
 from google.adk.events.event import Event
 from vertexai import agent_engines
+
+# Add tests directory to path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from test_config import CT_AGENT_URL, WEA_AGENT_URL
 
 from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 
@@ -25,14 +31,10 @@ from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 @pytest.fixture(autouse=True)
 def _set_agent_env_vars():
     """Set required environment variables for the hosting agent."""
-    os.environ.setdefault(
-        "CT_AGENT_URL",
-        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/8358349955399680000/a2a",
-    )
-    os.environ.setdefault(
-        "WEA_AGENT_URL",
-        "https://us-central1-aiplatform.googleapis.com/v1beta1/projects/496235138247/locations/us-central1/reasoningEngines/5302657608228798464/a2a",
-    )
+    if not CT_AGENT_URL or not WEA_AGENT_URL:
+        pytest.skip("CT_AGENT_URL and WEA_AGENT_URL must be configured")
+    os.environ.setdefault("CT_AGENT_URL", CT_AGENT_URL)
+    os.environ.setdefault("WEA_AGENT_URL", WEA_AGENT_URL)
 
 
 @pytest.fixture

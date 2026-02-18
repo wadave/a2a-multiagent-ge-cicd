@@ -13,7 +13,27 @@
 # limitations under the License.
 # Author: Dave Wang
 
-"""Shared test configuration and utilities."""
+"""Shared test configuration.
+
+All environment-specific values (project IDs, agent IDs, URLs) are loaded
+from environment variables. Hardcoded defaults are intentionally removed
+so that tests fail fast when required configuration is missing, rather than
+silently running against the wrong environment.
+
+Required environment variables:
+    PROJECT_ID: GCP project ID (e.g., "my-project-id")
+    PROJECT_NUMBER: GCP project number (e.g., "123456789")
+
+Optional environment variables (with sensible defaults or derived values):
+    GOOGLE_CLOUD_REGION / GOOGLE_CLOUD_LOCATION: GCP region (default: us-central1)
+    COCKTAIL_AGENT_ID: Reasoning Engine ID for Cocktail Agent
+    WEATHER_AGENT_ID: Reasoning Engine ID for Weather Agent
+    HOSTING_AGENT_ID: Reasoning Engine ID for Hosting Agent
+    CT_MCP_SERVER_URL: Cocktail MCP server URL
+    WEA_MCP_SERVER_URL: Weather MCP server URL
+    CT_AGENT_URL: Cocktail Agent A2A URL (for hosting agent sub-agents)
+    WEA_AGENT_URL: Weather Agent A2A URL (for hosting agent sub-agents)
+"""
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -24,26 +44,80 @@ load_dotenv(project_root / ".env.deploy")  # Deployment config
 load_dotenv(project_root / "src" / "a2a_agents" / ".env")  # Agent config
 load_dotenv()  # Current directory .env
 
-# Project configuration
-PROJECT_ID = os.getenv("PROJECT_ID", "dw-genai-dev")
-PROJECT_NUMBER = os.getenv("PROJECT_NUMBER", "496235138247")
-LOCATION = os.getenv("GOOGLE_CLOUD_REGION") or os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+# ---------------------------------------------------------------------------
+# Project configuration (required)
+# ---------------------------------------------------------------------------
+PROJECT_ID = os.environ.get("PROJECT_ID", "")
+PROJECT_NUMBER = os.environ.get("PROJECT_NUMBER", "")
+LOCATION = (
+    os.environ.get("GOOGLE_CLOUD_REGION")
+    or os.environ.get("GOOGLE_CLOUD_LOCATION")
+    or "us-central1"
+)
 
-# Agent IDs (from environment or defaults)
-COCKTAIL_AGENT_ID = os.getenv("COCKTAIL_AGENT_ID", "7385853910864363520")
-WEATHER_AGENT_ID = os.getenv("WEATHER_AGENT_ID", "3972230946433794048")
-HOSTING_AGENT_ID = os.getenv("HOSTING_AGENT_ID", "6246548758255894528")
+# ---------------------------------------------------------------------------
+# Agent Engine IDs (optional - tests that need them will skip if missing)
+# ---------------------------------------------------------------------------
+COCKTAIL_AGENT_ID = os.environ.get("COCKTAIL_AGENT_ID", "")
+WEATHER_AGENT_ID = os.environ.get("WEATHER_AGENT_ID", "")
+HOSTING_AGENT_ID = os.environ.get("HOSTING_AGENT_ID", "")
 
-# Agent URLs (constructed from IDs)
-COCKTAIL_AGENT_URL = f"https://{LOCATION}-aiplatform.googleapis.com/v1beta1/projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{COCKTAIL_AGENT_ID}/a2a"
-WEATHER_AGENT_URL = f"https://{LOCATION}-aiplatform.googleapis.com/v1beta1/projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{WEATHER_AGENT_ID}/a2a"
-HOSTING_AGENT_RESOURCE_NAME = f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{HOSTING_AGENT_ID}"
+# ---------------------------------------------------------------------------
+# Derived URLs - constructed from IDs when available
+# ---------------------------------------------------------------------------
+_AIPLATFORM_BASE = f"https://{LOCATION}-aiplatform.googleapis.com/v1beta1"
 
+
+def _agent_a2a_url(agent_id: str) -> str:
+    """Build the A2A endpoint URL for an agent."""
+    if not PROJECT_NUMBER or not agent_id:
+        return ""
+    resource = f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{agent_id}"
+    return f"{_AIPLATFORM_BASE}/{resource}/a2a"
+
+
+def _agent_resource_name(agent_id: str) -> str:
+    """Build the full resource name for an agent."""
+    if not PROJECT_NUMBER or not agent_id:
+        return ""
+    return f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{agent_id}"
+
+
+# A2A endpoint URLs
+COCKTAIL_AGENT_URL = os.environ.get("COCKTAIL_AGENT_URL") or _agent_a2a_url(COCKTAIL_AGENT_ID)
+WEATHER_AGENT_URL = os.environ.get("WEATHER_AGENT_URL") or _agent_a2a_url(WEATHER_AGENT_ID)
+HOSTING_AGENT_URL = os.environ.get("HOSTING_AGENT_URL") or _agent_a2a_url(HOSTING_AGENT_ID)
+
+# Resource names (for agent_engines API)
+COCKTAIL_AGENT_RESOURCE_NAME = _agent_resource_name(COCKTAIL_AGENT_ID)
+WEATHER_AGENT_RESOURCE_NAME = _agent_resource_name(WEATHER_AGENT_ID)
+HOSTING_AGENT_RESOURCE_NAME = _agent_resource_name(HOSTING_AGENT_ID)
+
+# Sub-agent URLs used by the Hosting Agent
+CT_AGENT_URL = os.environ.get("CT_AGENT_URL") or COCKTAIL_AGENT_URL
+WEA_AGENT_URL = os.environ.get("WEA_AGENT_URL") or WEATHER_AGENT_URL
+
+# ---------------------------------------------------------------------------
 # MCP Server URLs
-CT_MCP_SERVER_URL = os.getenv("CT_MCP_SERVER_URL", "https://cocktail-mcp-ge-staging-lxo6yz2aha-uc.a.run.app/mcp/")
-WEA_MCP_SERVER_URL = os.getenv("WEA_MCP_SERVER_URL", "https://weather-mcp-ge-staging-lxo6yz2aha-uc.a.run.app/mcp/")
+# ---------------------------------------------------------------------------
+CT_MCP_SERVER_URL = os.environ.get("CT_MCP_SERVER_URL", "")
+WEA_MCP_SERVER_URL = os.environ.get("WEA_MCP_SERVER_URL", "")
 
-# Test configuration
+# Base URLs (without /mcp/ path) for OIDC audience
+CT_MCP_BASE_URL = CT_MCP_SERVER_URL.rstrip("/").removesuffix("/mcp") if CT_MCP_SERVER_URL else ""
+WEA_MCP_BASE_URL = WEA_MCP_SERVER_URL.rstrip("/").removesuffix("/mcp") if WEA_MCP_SERVER_URL else ""
+
+# ---------------------------------------------------------------------------
+# Frontend URL
+# ---------------------------------------------------------------------------
+FRONTEND_URL = os.environ.get(
+    "FRONTEND_URL",
+    f"https://a2a-frontend-ge2-{PROJECT_NUMBER}.{LOCATION}.run.app" if PROJECT_NUMBER else "",
+)
+
+# ---------------------------------------------------------------------------
+# Test defaults
+# ---------------------------------------------------------------------------
 DEFAULT_USER_ID = "test_user"
 DEFAULT_TIMEOUT = 90.0  # seconds
 DEFAULT_POLL_ATTEMPTS = 45
