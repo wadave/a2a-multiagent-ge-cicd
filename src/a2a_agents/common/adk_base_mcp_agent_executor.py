@@ -56,31 +56,27 @@ def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
         dictionary if auth fails or is skipped (e.g., no credentials).
     """
     try:
-        # This single call is the canonical way to get an OIDC token using ADC.
-        # It automatically finds credentials (local, SA, or metadata server).
+        # First attempt: Use ADC directly
         auth_req = google_auth_requests.Request()
         token = google_id_token.fetch_id_token(auth_req, audience)
-
         logging.info("Successfully fetched OIDC token via google.auth.")
         return {"Authorization": f"Bearer {token}"}
-
-    except google_auth_exceptions.DefaultCredentialsError:
-        # This is expected in local environments without ADC setup.
-        logging.warning(
-            "No Google Cloud credentials found (DefaultCredentialsError). "
-            "Skipping OIDC token fetch. This is normal for local dev."
-        )
-
     except Exception as e:
-        # Any other error means ADC was likely found but token minting failed
-        # (e.g., IAM permissions, wrong audience, metadata server unreachable).
-        logging.critical(
-            f"An unexpected error occurred fetching OIDC token for audience '{audience}': {e}",
-            exc_info=True,
-        )
+        logging.warning(f"ADC fetch failed ({e}). Attempting GCP Metadata server fallback...")
+        try:
+            # Fallback: Query the GCP Metadata server directly 
+            # (Works inside Cloud Run / Reasoning Engine)
+            import urllib.request
+            url = f"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience={audience}"
+            req = urllib.request.Request(url, headers={"Metadata-Flavor": "Google"})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                token = response.read().decode("utf-8")
+                logging.info("Successfully fetched OIDC token via Metadata server.")
+                return {"Authorization": f"Bearer {token}"}
+        except Exception as fallback_e:
+            logging.error(f"Metadata fetch also failed: {fallback_e}")
+            return {}
 
-    # Return an empty dict if any exception occurred
-    return {}
 
 
 class TokenManager:
@@ -95,12 +91,7 @@ class TokenManager:
             refresh_buffer_seconds: Refresh token this many seconds before expiry.
                                    Default is 300 (5 minutes).
         """
-        import urllib.parse
-        parsed_url = urllib.parse.urlparse(audience)
-        
-        # Cloud Run OIDC audience is just the base URL (scheme://netloc)
-        # Without any trailing paths like /mcp or /
-        self.audience = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        self.audience = audience
         self.refresh_buffer_seconds = refresh_buffer_seconds
         self._token = None
         self._expiry = None
