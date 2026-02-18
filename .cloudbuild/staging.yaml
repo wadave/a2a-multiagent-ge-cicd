@@ -1,5 +1,5 @@
 steps:
-  # 1. Build and deploy the Cocktail MCP Server (skip if already deployed with this commit)
+  # 1. Build and deploy the Cocktail MCP Server
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-cocktail-mcp'
     entrypoint: bash
@@ -10,25 +10,17 @@ steps:
         apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}"
 
-        # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe cocktail-mcp-ge-staging \
-          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
+        echo "Building and deploying Cocktail MCP Server..."
+        docker build -t $$IMAGE ./src/mcp_servers/cocktail_mcp_server
+        docker push $$IMAGE
+        gcloud run deploy cocktail-mcp-ge-staging \
+          --image $$IMAGE \
+          --region ${_REGION} \
+          --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+          --no-allow-unauthenticated \
+          --set-env-vars "PROJECT_ID=${PROJECT_ID}"
 
-        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
-          echo "Cocktail MCP already deployed with commit ${COMMIT_SHA}, skipping."
-        else
-          echo "Building and deploying Cocktail MCP Server..."
-          docker build -t $$IMAGE ./src/mcp_servers/cocktail_mcp_server
-          docker push $$IMAGE
-          gcloud run deploy cocktail-mcp-ge-staging \
-            --image $$IMAGE \
-            --region ${_REGION} \
-            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
-            --no-allow-unauthenticated \
-            --set-env-vars "PROJECT_ID=${PROJECT_ID}"
-        fi
-
-  # 2. Build and deploy the Weather MCP Server (skip if already deployed with this commit)
+  # 2. Build and deploy the Weather MCP Server
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-weather-mcp'
     entrypoint: bash
@@ -39,23 +31,15 @@ steps:
         apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}"
 
-        # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe weather-mcp-ge-staging \
-          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
-
-        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
-          echo "Weather MCP already deployed with commit ${COMMIT_SHA}, skipping."
-        else
-          echo "Building and deploying Weather MCP Server..."
-          docker build -t $$IMAGE ./src/mcp_servers/weather_mcp_server
-          docker push $$IMAGE
-          gcloud run deploy weather-mcp-ge-staging \
-            --image $$IMAGE \
-            --region ${_REGION} \
-            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
-            --no-allow-unauthenticated \
-            --set-env-vars "PROJECT_ID=${PROJECT_ID}"
-        fi
+        echo "Building and deploying Weather MCP Server..."
+        docker build -t $$IMAGE ./src/mcp_servers/weather_mcp_server
+        docker push $$IMAGE
+        gcloud run deploy weather-mcp-ge-staging \
+          --image $$IMAGE \
+          --region ${_REGION} \
+          --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+          --no-allow-unauthenticated \
+          --set-env-vars "PROJECT_ID=${PROJECT_ID}"
 
   # 3. Extract Cloud Run URLs to pass to Agents (append /mcp/ path with trailing slash for FastMCP servers)
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
@@ -135,10 +119,6 @@ steps:
         apk add --no-cache docker-cli
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/frontend:${COMMIT_SHA}"
 
-        # Check if the service is already running this image
-        CURRENT_IMAGE=$$(gcloud run services describe a2a-frontend-ge2 \
-          --region ${_REGION} --format 'value(spec.template.spec.containers[0].image)' 2>/dev/null || echo "")
-
         # Read and validate hosting agent ID
         if [ ! -f /workspace/hosting_agent_id.txt ]; then
           echo "ERROR: hosting_agent_id.txt not found!"
@@ -159,24 +139,17 @@ steps:
 
         echo "Extracted AGENT_ENGINE_ID: $$AGENT_ENGINE_ID"
 
-        if [ "$$CURRENT_IMAGE" = "$$IMAGE" ]; then
-          echo "Image already deployed with commit ${COMMIT_SHA}, but updating service with latest env vars..."
-          gcloud run services update a2a-frontend-ge2 \
-            --region ${_REGION} \
-            --update-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
-        else
-          echo "Building and deploying Frontend with latest src code..."
-          docker build -t $$IMAGE ./src/frontend
-          docker push $$IMAGE
-          gcloud run deploy a2a-frontend-ge2 \
-            --image $$IMAGE \
-            --region ${_REGION} \
-            --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
-            --allow-unauthenticated \
-            --memory 2Gi \
-            --timeout 600 \
-            --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
-        fi
+        echo "Building and deploying Frontend with latest code..."
+        docker build -t $$IMAGE ./src/frontend
+        docker push $$IMAGE
+        gcloud run deploy a2a-frontend-ge2 \
+          --image $$IMAGE \
+          --region ${_REGION} \
+          --service-account ${_APP_SERVICE_ACCOUNT_STAGING} \
+          --allow-unauthenticated \
+          --memory 2Gi \
+          --timeout 600 \
+          --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
     waitFor: ['deploy-agents']
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here
