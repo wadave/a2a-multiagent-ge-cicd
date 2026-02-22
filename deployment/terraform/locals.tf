@@ -38,8 +38,8 @@ locals {
   ]
 
   deploy_project_ids = {
-    prod    = var.prod_project_id
     staging = var.staging_project_id
+    prod    = var.prod_project_id
   }
 
   all_project_ids = [
@@ -72,12 +72,12 @@ locals {
     for pair in flatten([
       for env_key, project_id in local.deploy_project_ids : [
         for agent_key, agent in local.agents : {
-          key                 = "${env_key}-${agent_key}"
-          env_key             = env_key
-          project_id          = project_id
-          display_name        = "${agent.display_name_suffix} ${title(env_key)}"
-          entrypoint_module   = agent.entrypoint_module
-          entrypoint_object   = agent.entrypoint_object
+          key               = "${env_key}-${agent_key}"
+          env_key           = env_key
+          project_id        = project_id
+          display_name      = "${agent.display_name_suffix} ${title(env_key)}"
+          entrypoint_module = agent.entrypoint_module
+          entrypoint_object = agent.entrypoint_object
         }
       ]
     ]) : pair.key => pair

@@ -58,7 +58,7 @@ def list_registered_agents(
     location: str,
     app_id: str,
 ) -> list[dict]:
-    """List all agents registered in Agentspace.
+    """List all agents registered in gemini_enterprise.
 
     Returns:
         List of agent dicts, or empty list on error.
@@ -145,7 +145,7 @@ def register_agent(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Register or update an A2A agent in Gemini Enterprise Agentspace"
+        description="Register or update an A2A agent in Gemini Enterprise gemini_enterprise"
     )
     parser.add_argument(
         "--project-number", required=True, help="GCP Project Number"
@@ -153,7 +153,7 @@ def main():
     parser.add_argument(
         "--app-id",
         required=True,
-        help="Gemini Enterprise Application ID (AS_APP)",
+        help="Gemini Enterprise Application ID (ge_app)",
     )
     parser.add_argument(
         "--agent-url", required=True, help="Agent Engine URL to register"

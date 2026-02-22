@@ -64,6 +64,7 @@ dependencies = [
     { name = "google-adk" },
     { name = "google-cloud-aiplatform" },
     { name = "google-genai" },
+    { name = "python-terraform" },
 ]
 
 [package.metadata]
@@ -74,6 +75,7 @@ requires-dist = [
     { name = "google-adk", specifier = ">=1.25.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.113.0" },
     { name = "google-genai", specifier = ">=1.63.0" },
+    { name = "python-terraform", specifier = ">=0.10.1" },
 ]
 
 [[package]]
@@ -2953,6 +2955,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/94/01/979e98d542a70714b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1b/d0/397f9626e711ff749a95d96b7af99b9c566a9bb5129b8e4c10fc4d100304/python_multipart-0.0.22-py3-none-any.whl", hash = "sha256:2b2cd894c83d21bf49d702499531c7bafd057d730c201782048f7945d82de155", size = 24579, upload-time = "2026-01-25T10:15:54.811Z" },
 ]
+
+[[package]]
+name = "python-terraform"
+version = "0.10.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/a2/10fa8a5d79096f96f0a1b9917fe3038b453e40b39cc22e07410a365f2dc3/python-terraform-0.10.1.tar.gz", hash = "sha256:0f4d1648c4fec61d5aa53142558ba3761c8f9ee7acce57505a1245d4dd85f5cf", size = 8746, upload-time = "2019-06-21T07:03:00.906Z" }
 
 [[package]]
 name = "pytokens"

@@ -284,6 +284,8 @@ def main():
         extra_env_vars={
             "CT_AGENT_URL": ct_agent_url,
             "WEA_AGENT_URL": wea_agent_url,
+            "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY": "true",
+  "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT": "true",
         },
         existing_agents=existing_agents,
     )

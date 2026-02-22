@@ -81,7 +81,7 @@ variable "cicd_roles" {
 variable "cicd_sa_deployment_required_roles" {
   description = "List of roles to assign to the CICD runner service account for the Staging and Prod projects."
   type        = list(string)
-  default = [    
+  default = [
     "roles/iam.serviceAccountUser",
     "roles/aiplatform.user",
     "roles/storage.admin"
@@ -139,27 +139,45 @@ variable "prod_project_number" {
   default     = ""
 }
 
-variable "as_app_staging" {
+variable "ge_app_staging" {
   type        = string
-  description = "Agent Space App ID for staging (optional)"
+  description = "Gemini Enterprise App ID for staging (optional)"
   default     = ""
 }
 
-variable "as_app_prod" {
+variable "ge_app_prod" {
   type        = string
-  description = "Agent Space App ID for production (optional)"
+  description = "Gemini Enterprise App ID for production (optional)"
   default     = ""
 }
 
 variable "auth_id_staging" {
   type        = string
-  description = "OAuth Client ID for staging Agentspace registration (optional)"
+  description = "OAuth Client ID for staging Gemini Enterprise registration (optional)"
   default     = ""
 }
 
 variable "auth_id_prod" {
   type        = string
-  description = "OAuth Client ID for production Agentspace registration (optional)"
+  description = "OAuth Client ID for production Gemini Enterprise registration (optional)"
   default     = ""
+}
+
+variable "oauth_client_id_secret_name" {
+  type        = string
+  description = "Name of the secret in Secret Manager containing the OAuth Client ID."
+  default     = "client_secret"
+}
+
+variable "oauth_client_secret_secret_name" {
+  type        = string
+  description = "Name of the secret in Secret Manager containing the OAuth Client Secret."
+  default     = "client_secret"
+}
+
+variable "agents_region" {
+  type        = string
+  description = "The region for Gemini Enterprise."
+  default     = "global"
 }
 

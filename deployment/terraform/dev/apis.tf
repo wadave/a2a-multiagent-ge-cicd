@@ -38,6 +38,6 @@ resource "google_project_service" "services" {
 
 resource "google_project_service_identity" "vertex_sa" {
   provider = google-beta
-  project = var.dev_project_id
-  service = "aiplatform.googleapis.com"
+  project  = var.dev_project_id
+  service  = "aiplatform.googleapis.com"
 }

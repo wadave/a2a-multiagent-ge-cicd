@@ -152,6 +152,27 @@ steps:
           --set-env-vars "PROJECT_ID=${_STAGING_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
     waitFor: ['deploy-agents']
 
+  # 7. Register the Agent to Gemini Enterprise
+  - name: 'hashicorp/terraform:1.5'
+    id: 'register-agent'
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        set -e
+        cd deployment/terraform
+        terraform init
+        terraform apply -auto-approve \
+          -target='module.gemini_enterprise_oauth["staging"]' \
+          -target='module.gemini_enterprise_agent_engine_register["staging"]'
+    env:
+      - 'TF_VAR_prod_project_id=${_STAGING_PROJECT_ID}'
+      - 'TF_VAR_staging_project_id=${_STAGING_PROJECT_ID}'
+      - 'TF_VAR_cicd_runner_project_id=${PROJECT_ID}'
+      - 'TF_VAR_repository_owner=placeholder'
+      - 'TF_VAR_repository_name=placeholder'
+    waitFor: ['deploy-frontend']
+
 # Substitutions are provided by Terraform - DO NOT hard-code values here
 # These are set in deployment/terraform/build_triggers.tf
 substitutions:

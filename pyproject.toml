@@ -11,6 +11,7 @@ dependencies = [
     "google-cloud-aiplatform>=1.113.0",
     "google-genai>=1.63.0",
     "fastmcp",
+    "python-terraform>=0.10.1",
 ]
 
 [[tool.uv.index]]

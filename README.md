@@ -78,7 +78,7 @@ The agents interact with the following MCP servers:
 │       └── variables.tf          #   Input variables
 ├── scripts/
 │   ├── deploy_agent.py           # CLI tool to deploy individual agents
-│   └── register_agent_to_agentspace.py  # Register agents to Agentspace
+│   └── register_agent_to_gemini_enterprise.py  # Register agents to gemini_enterprise
 ├── src/
 │   ├── a2a_agents/               # Agent source code (workspace package)
 │   │   ├── common/               #   Shared executors, auth utilities
@@ -133,6 +133,8 @@ Here are some example questions you can ask the chatbot:
    - **CI/CD project** — runs Cloud Build pipelines
    - **Staging project** — staging environment for agents and services
    - **Production project** — production environment
+8. **Gemini Enterprise App**: You need to set up a Gemini Enterprise App and provide its App ID.
+9. **OAuth Credentials**: Obtain OAuth credentials for Gemini Enterprise (Client ID and Client Secret) and save them in the Staging and Production projects' Secret Manager.
 
 ---
 
@@ -341,9 +343,9 @@ frontend_image_prod        = ""
 hosting_agent_id_staging   = ""
 hosting_agent_id_prod      = ""
 
-# Optional: Agentspace Registration (for production)
-as_app_staging   = ""
-as_app_prod      = ""
+# Optional: gemini_enterprise Registration (for production)
+ge_app_staging   = ""
+ge_app_prod      = ""
 auth_id_staging  = ""
 auth_id_prod     = ""
 ```
@@ -542,14 +544,14 @@ Deployed Resources
 - Uses production project and service account
 - Deploys to: `cocktail-mcp-ge-prod`, `weather-mcp-ge-prod`, `a2a-frontend-ge2-prod`
 - Adds `DISPLAY_NAME_SUFFIX="Prod"` to agents
-- Optionally registers hosting agent to Agentspace (if `_AS_APP` and `_AUTH_ID` configured)
+- Optionally registers hosting agent to gemini_enterprise (if `_ge_app` and `_AUTH_ID` configured)
 
 **Substitutions (from Terraform):**
 - `_PROD_PROJECT_ID` → Production project ID
 - `_PROJECT_NUMBER` → Production project number
 - `_REGION` → Deployment region
 - `_APP_SERVICE_ACCOUNT_PROD` → Production service account email
-- `_AS_APP` → Agentspace App ID (optional)
+- `_ge_app` → gemini_enterprise App ID (optional)
 - `_AUTH_ID` → OAuth Client ID (optional)
 
 ### Important: MCP URL Trailing Slash

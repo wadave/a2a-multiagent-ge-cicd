@@ -153,38 +153,27 @@ steps:
           --set-env-vars "PROJECT_ID=${_PROD_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
     waitFor: ['deploy-agents']
 
-  # 7. Register the Agent to Gemini Enterprise Agentspace (Optional - only if configured)
-  - name: "python:3.12-slim"
-    entrypoint: bash
+  # 7. Register the Agent to Gemini Enterprise
+  - name: 'hashicorp/terraform:1.5'
+    id: 'register-agent'
+    entrypoint: sh
     args:
       - '-c'
       - |
         set -e
-        # Check if Agentspace registration is configured
-        if [ -z "${_AS_APP}" ] || [ -z "${_AUTH_ID}" ]; then
-          echo "Skipping Agentspace registration - _AS_APP or _AUTH_ID not configured"
-          exit 0
-        fi
-
-        # Install gcloud and requests
-        apt-get update && apt-get install -y curl apt-transport-https ca-certificates gnupg
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        apt-get update && apt-get install -y google-cloud-cli
-        pip install requests
-
-        HOSTING_AGENT_ID=$$(cat /workspace/hosting_agent_id.txt)
-        HOSTING_URL="https://${_REGION}-aiplatform.googleapis.com/v1beta1/$${HOSTING_AGENT_ID}/environments/default"
-
-        python scripts/register_agent_to_agentspace.py \
-          --project-number=${_PROJECT_NUMBER} \
-          --app-id=${_AS_APP} \
-          --agent-url="$${HOSTING_URL}" \
-          --agent-name="a2a-agent" \
-          --display-name="A2A Agent GE2 Prod" \
-          --description="A2A CI/CD Hosting Agent deployed via Cloud Build" \
-          --auth-id=${_AUTH_ID}
-    id: 'register-agent'
+        cd deployment/terraform
+        terraform init
+        terraform apply -auto-approve \
+          -target='module.gemini_enterprise_oauth["prod"]' \
+          -target='module.gemini_enterprise_agent_engine_register["prod"]'
+    env:
+      - 'TF_VAR_prod_project_id=${_PROD_PROJECT_ID}'
+      - 'TF_VAR_staging_project_id=${_PROD_PROJECT_ID}'
+      - 'TF_VAR_cicd_runner_project_id=${PROJECT_ID}'
+      - 'TF_VAR_repository_owner=placeholder'
+      - 'TF_VAR_repository_name=placeholder'
+      - 'TF_VAR_ge_app_prod=${_GE_APP}'
+      - 'TF_VAR_auth_id_prod=${_AUTH_ID}'
     waitFor: ['deploy-agents']
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here

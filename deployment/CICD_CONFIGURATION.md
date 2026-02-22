@@ -67,7 +67,7 @@ repository_name  = "your-repo"
 - `region` - Deployment region
 - `repository_owner` / `repository_name` - GitHub configuration
 - Service account roles and permissions
-- Optional: Agentspace configuration
+- Optional: Gemini Enterprise configuration
 
 ### Build Trigger Substitutions
 
@@ -90,7 +90,7 @@ substitutions = {
   _PROJECT_NUMBER             = var.prod_project_number
   _APP_SERVICE_ACCOUNT_PROD   = google_service_account.app_sa["prod"].email
   _REGION                     = var.region
-  _AS_APP                     = var.as_app_prod      # Optional
+  _ge_app                     = var.ge_app_prod      # Optional
   _AUTH_ID                    = var.auth_id_prod     # Optional
 }
 ```
@@ -139,7 +139,7 @@ Same structure as staging, but:
 - Uses `_PROD_PROJECT_ID` instead of `_STAGING_PROJECT_ID`
 - Uses `_APP_SERVICE_ACCOUNT_PROD`
 - Sets `DISPLAY_NAME_SUFFIX="Prod"`
-- Optional: Registers agent to Agentspace if `_AS_APP` and `_AUTH_ID` are set
+- Optional: Registers agent to Gemini Enterprise if `_GE_APP` and `_AUTH_ID` are set
 
 ## Deployment Script
 
@@ -195,7 +195,7 @@ This ensures:
 | `_REGION` | `var.region` | Deployment region |
 | `_APP_SERVICE_ACCOUNT_STAGING` | `google_service_account.app_sa["staging"].email` | Staging service account |
 | `_APP_SERVICE_ACCOUNT_PROD` | `google_service_account.app_sa["prod"].email` | Production service account |
-| `_AS_APP` | `var.as_app_prod` | Optional: Agentspace App ID |
+| `_GE_APP` | `var.ge_app_prod` | Optional: Gemini Enterprise App ID |
 | `_AUTH_ID` | `var.auth_id_prod` | Optional: OAuth Client ID |
 
 ### Runtime Environment Variables (in deploy step)

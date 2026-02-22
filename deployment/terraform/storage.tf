@@ -13,7 +13,7 @@
 # limitations under the License.
 
 provider "google" {
-  region = var.region
+  region                = var.region
   user_project_override = true
 }
 
