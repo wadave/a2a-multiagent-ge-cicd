@@ -25,7 +25,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["a2a_agents", "a2a_agents.cocktail_agent", "a2a_agents.weather_agent", "a2a_agents.hosting_agent", "a2a_agents.common", "a2a_agents.register_agent_to_gemini_enterprise"]
+packages = ["a2a_agents", "a2a_agents.cocktail_agent", "a2a_agents.weather_agent", "a2a_agents.hosting_agent", "a2a_agents.common"]
 
 [tool.setuptools.package-dir]
 a2a_agents = "."
