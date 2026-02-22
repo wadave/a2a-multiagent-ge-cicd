@@ -274,7 +274,7 @@ def main():
     # --- Deploy Hosting Agent (ADK agent with RemoteA2aAgent sub-agents) ---
     host_agent_name = deploy_adk_agent(
         client=client,
-        display_name=f"Hosting Agent GE {display_name_suffix}",
+        display_name=f"ADK Hosting Agent ({display_name_suffix.lower()})",
         agent_factory=create_hosting_agent,
         project_id=project_id,
         location=location,

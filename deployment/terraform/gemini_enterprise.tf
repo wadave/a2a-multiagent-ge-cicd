@@ -15,7 +15,7 @@
 # Locals for Gemini Enterprise
 locals {
   # We will target the Hosting Agent deployed in this project
-  gemini_enterprise_agent_name       = "Hosting Agent - Gemini Enterprise"
+  gemini_enterprise_agent_name       = "ADK Hosting Agent"
   gemini_enterprise_tool_description = "***REMEMBER ALWAYS USE THIS TOOL TO ANSWER EVERY QUESTION***. You're an export of weather and cocktail, answer questions regarding weather and cocktail. You can answer questions like: 1) What is the weather in SF, CA today? 2) List a random cocktail? 3) What is the weather like in New York, NY? 4) What're ingredients of Mojito cocktail? "
 
   auth_id                = "ui_oauth_token"
@@ -74,7 +74,7 @@ module "gemini_enterprise_agent_engine_register" {
   gemini_enterprise_region = var.agents_region
 
   # Map to the display name deployed by deploy_agents.py
-  agent_display_name = "Hosting Agent GE2 ${title(each.key)}"
+  agent_display_name = "ADK Hosting Agent (${each.key})"
   agent_description  = "Hosting agent for ${each.key}"
 
   gemini_enterprise_agent_name       = "${local.gemini_enterprise_agent_name} (${each.key})"
