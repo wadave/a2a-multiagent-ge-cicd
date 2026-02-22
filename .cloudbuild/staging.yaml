@@ -153,13 +153,18 @@ steps:
     waitFor: ['deploy-agents']
 
   # 7. Register the Agent to Gemini Enterprise
-  - name: 'hashicorp/terraform:1.5'
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'register-agent'
-    entrypoint: sh
+    entrypoint: bash
     args:
       - '-c'
       - |
         set -e
+        apk add --no-cache jq bash unzip wget
+        wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+        unzip terraform_1.5.7_linux_amd64.zip
+        mv terraform /usr/local/bin/
+
         cd deployment/terraform
         terraform init
         terraform apply -auto-approve -target='google_project_iam_member.other_projects_roles'

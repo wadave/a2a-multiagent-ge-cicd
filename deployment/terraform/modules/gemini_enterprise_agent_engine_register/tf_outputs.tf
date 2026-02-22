@@ -62,7 +62,7 @@ resource "null_resource" "register_or_update_agent_engine_to_gemini_enterprise" 
 
   provisioner "local-exec" {
     command     = "./${path.module}/build/_register_or_update_agent_engine_to_gemini_enterprise_tpl.sh"
-    interpreter = ["/bin/sh", "-c"]
+    interpreter = ["/bin/bash", "-c"]
   }
 }
 
@@ -75,6 +75,6 @@ resource "null_resource" "deregister_agent_engine_from_gemini_enterprise" {
   provisioner "local-exec" {
     when        = destroy
     command     = "./${path.module}/build/_deregister_agent_engine_from_gemini_enterprise_tpl.sh"
-    interpreter = ["/bin/sh", "-c"]
+    interpreter = ["/bin/bash", "-c"]
   }
 }

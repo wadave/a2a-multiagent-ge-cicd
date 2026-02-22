@@ -56,7 +56,7 @@ resource "null_resource" "register_or_update_authorization_to_gemini_enterprise"
 
   provisioner "local-exec" {
     command     = "./${path.module}/build/_register_or_update_authorization_to_gemini_enterprise_tpl.sh"
-    interpreter = ["/bin/sh", "-c"]
+    interpreter = ["/bin/bash", "-c"]
   }
 }
 
@@ -69,6 +69,6 @@ resource "null_resource" "deregister_authorization_from_gemini_enterprise" {
   provisioner "local-exec" {
     when        = destroy
     command     = "./${path.module}/build/_deregister_authorization_from_gemini_enterprise_tpl.sh"
-    interpreter = ["/bin/sh", "-c"]
+    interpreter = ["/bin/bash", "-c"]
   }
 }
