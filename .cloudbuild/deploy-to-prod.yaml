@@ -165,7 +165,8 @@ steps:
         terraform init
         terraform apply -auto-approve \
           -target='module.gemini_enterprise_oauth["prod"]' \
-          -target='module.gemini_enterprise_agent_engine_register["prod"]'
+          -target='module.gemini_enterprise_agent_engine_register["prod"]' \
+          -target='google_project_iam_member.other_projects_roles'
     env:
       - 'TF_VAR_prod_project_id=${_PROD_PROJECT_ID}'
       - 'TF_VAR_staging_project_id=${_PROD_PROJECT_ID}'
