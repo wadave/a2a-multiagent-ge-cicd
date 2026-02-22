@@ -77,8 +77,7 @@ The agents interact with the following MCP servers:
 │       ├── telemetry.tf          #   BigQuery telemetry
 │       └── variables.tf          #   Input variables
 ├── scripts/
-│   ├── deploy_agent.py           # CLI tool to deploy individual agents
-│   └── register_agent_to_gemini_enterprise.py  # Register agents to gemini_enterprise
+│   └── deploy_agent.py           # CLI tool to deploy individual agents
 ├── src/
 │   ├── a2a_agents/               # Agent source code (workspace package)
 │   │   ├── common/               #   Shared executors, auth utilities
