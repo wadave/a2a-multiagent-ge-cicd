@@ -86,6 +86,7 @@ variable "cicd_sa_deployment_required_roles" {
     "roles/aiplatform.user",
     "roles/storage.admin",
     "roles/secretmanager.secretAccessor",
+    "roles/secretmanager.viewer",
     "roles/serviceusage.serviceUsageAdmin",
     "roles/serviceusage.serviceUsageConsumer",
     "roles/resourcemanager.projectIamAdmin"
