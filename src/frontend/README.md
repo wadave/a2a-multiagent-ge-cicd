@@ -42,19 +42,19 @@ In your Cloud Shell, execute the following commands to set up your environment v
 
 ```bash
 # Define a name for your Cloud Run service
-export SERVICE_NAME=\'a2a-server-frontend'
+export SERVICE_NAME='a2a-server-frontend'
 
 # Specify the Google Cloud region for deployment
-export LOCATION=\'us-central1'
+export LOCATION='us-central1'
 
 # Replace with your Google Cloud Project ID
-export PROJECT_ID=\'your-gcp-project-id'
+export PROJECT_ID='your-gcp-project-id'
 
 # Replace with your Google Cloud Project Number
-export PROJECT_NUMBER=\'your-gcp-project-number'
+export PROJECT_NUMBER='your-gcp-project-number'
 
 # Replace with your Agent Engine ID
-export AGENT_ENGINE_ID=\'your-agent-engine-id'
+export AGENT_ENGINE_ID='your-agent-engine-id'
 ```
 
 ### 2. Deploy the Service
@@ -78,7 +78,7 @@ gcloud run deploy $SERVICE_NAME \
 
 The Cloud Run is set up not to allow unauthenticated access, so you need to add the invoker role to the Cloud Run service account.
 
-In Cloud Shell, execute the following command to autherize the Cloud Run service
+In Cloud Shell, execute the following command to authorize the Cloud Run service
 
 ```bash
 gcloud run services add-iam-policy-binding $SERVICE_NAME \

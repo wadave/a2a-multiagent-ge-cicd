@@ -16,9 +16,10 @@ export SERVICE_NAME='weather-remote-mcp-server'
 export LOCATION='us-central1'
 
 # Replace with your Google Cloud Project ID
-export PROJECT_ID=''
+export PROJECT_ID='your-gcp-project-id'
 
-export PROJECT_NUMBER=''
+# Replace with your Google Cloud Project Number
+export PROJECT_NUMBER='your-gcp-project-number'
 ```
 
 In Cloud Shell, execute the following command:
@@ -31,31 +32,31 @@ gcloud run deploy $SERVICE_NAME \
   --project $PROJECT_ID \
   --memory 4G \
   --no-allow-unauthenticated
-
-
 ```
-```
-gcloud run services proxy $SERVICE_NAME --region=us-central1
+
+```bash
+gcloud run services proxy $SERVICE_NAME --region=$LOCATION
 ```
 
 ## Add Compute User Permission
+
+```bash
 gcloud run services add-iam-policy-binding $SERVICE_NAME \
     --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
     --role="roles/run.invoker" \
-    --region="us-central1"
+    --region="$LOCATION"
+```
 
+## Add Cloudtop User Permission (Optional)
 
+If you plan to access the service from a Cloudtop workspace or another VM, you must grant access to that environment's service account. You may also need to adjust Organization Policies to allow cross-domain access.
 
-## Add Cloudtop User Permission (Optional, only if you want to use Cloudtop)
-
-It's recommended to run in Cloud Shell, if you want to run it in Cloudtop or other VM, make sure you can run the below command.
-You may need to change IAM policy to allow cross domain access.
-
-If you need to grant access to a Cloudtop user, run the following command:
+For example, to grant access to a shared Cloudtop user, run the following command:
 
 ```bash
 gcloud run services add-iam-policy-binding $SERVICE_NAME \
     --member="serviceAccount:insecure-cloudtop-shared-user@cloudtop-prod-us-west.iam.gserviceaccount.com" \
     --role="roles/run.invoker" \
-    --region="us-central1"
+    --region="$LOCATION"
+```
 

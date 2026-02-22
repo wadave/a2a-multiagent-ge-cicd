@@ -19,7 +19,7 @@ Follow these steps to execute load tests:
    It's recommended to use a separate terminal tab and create a virtual environment for Locust to avoid conflicts with your application's Python environment.
 
    ```bash
-   python3 -m venv .locust_env && source .locust_env/bin/activate && pip install locust==2.31.1
+   uv venv .locust_env && source .locust_env/bin/activate && uv pip install locust==2.31.1
    ```
 
 **3. Execute the Load Test:**

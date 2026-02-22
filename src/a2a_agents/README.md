@@ -25,9 +25,6 @@ The architecture follows a hierarchical pattern where a `HostingAgent` acts as t
 ├── weather_agent/          # Specialized agent for weather forecasts
 │   ├── weather_agent_card.py
 │   └── weather_agent_executor.py
-├── deploy_cocktail_agent.ipynb  # Notebook for deploying the cocktail agent
-├── deploy_hosting_agent.ipynb              # Notebook for deploying the hosting agent
-├── deploy_weather_agent.ipynb   # Notebook for deploying the weather agent
 ├── pyproject.toml          # Project dependencies
 └── README.md               # This file
 ```
@@ -72,10 +69,9 @@ The `WeatherAgent` is a specialized agent that provides weather forecasts. It ca
 
 ## Deployment
 
-The project includes Jupyter notebooks for deploying the agents to Google's Agent Engine:
+Use the deployment scripts located in the root directory:
 
--   `deploy_cocktail_agent.ipynb`
--   `deploy_hosting_agent.ipynb`
--   `deploy_weather_agent.ipynb`
+-   `deployment/deploy_agents.py` - Deploys all agents sequentially (recommended).
+-   `scripts/deploy_agent.py` - CLI tool to deploy an individual agent.
 
-These notebooks provide a step-by-step guide for deploying each agent as a scalable and manageable service.
+These scripts handle registering the agents to Vertex AI Reasoning Engines.
