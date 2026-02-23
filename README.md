@@ -16,8 +16,57 @@ This application demonstrates the integration of Google's Open Source frameworks
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
 **Host Agent is built using Agent Engine server and ADK agents.**
+This architecture follows a highly modular, delegated multi-agent pattern, utilizing Agent2Agent (A2A) protocols and Model Context Protocol (MCP) for routing and data retrieval, backed by comprehensive Google Cloud observability tools within the Agent Engine runtime.
 
-![architecture](asset/a2a_adk_diagram.png)
+1. User Interface (Frontend) Tier
+Users interact with the system through two primary authenticated entry points. Both sit behind an authentication layer to ensure secure access to the backend.
+
+Front End (Custom UI For Tesging purpose): A bespoke web or mobile application built for end-user interaction.
+
+Agentspace (Gemini Enterprise UI): An enterprise-grade interface for interacting with the AI system.
+
+2. Orchestration Tier (Host Agent)
+This is the central routing and orchestration hub, hosted within the Google Cloud Agent Engine.
+
+Core Framework: Built using the ADK (Agent Development Kit).
+
+Functionality: The Host Agent receives authenticated user prompts. It acts as an intelligent router, analyzing the request to determine if it pertains to cocktails or weather.
+
+Sub-Agent Delegation: It utilizes two internal RemoteA2aAgent components. These act as A2A Clients, securely delegating tasks via the A2A Protocol to the specialized remote agents.
+
+3. Specialized Agent Tier (Domain Agents)
+Two independent, domain-specific agents handle task execution. Both are hosted alongside the Host Agent within the Google Cloud Agent Engine.
+
+Cocktail Agent (ADK): Receives cocktail-related instructions via A2A. It uses an MCP Client to request necessary data over StreamableHTTP.
+
+Weather Agent (ADK): Receives weather-related instructions via A2A. It uses an MCP Client to request necessary data over StreamableHTTP.
+
+4. Data Integration Tier (MCP Servers)
+This tier securely fetches real-world data from external APIs using the Model Context Protocol (MCP). These servers are hosted on serverless Google Cloud Run infrastructure.
+
+MCP Server A (Cocktail Data): Receives MCP requests and queries TheCocktailDB API via HTTP/REST to fetch drink recipes and ingredients.
+
+MCP Server B (Weather Data): Receives MCP requests and queries the National Weather Service API via HTTP/REST to fetch forecasts and meteorological data.
+
+5. Observability & Operations Tier (New)
+Integrated directly within the Google Cloud Agent Engine boundary, this tier provides comprehensive insight into the health, performance, and behavior of the multi-agent system. The Host Agent, Cocktail Agent, and Weather Agent all actively send Telemetry Data (Logs, Metrics, Traces) to these services:
+
+Cloud Logging: Captures detailed logs from all agents for debugging, auditing, and analyzing agent thought processes and errors.
+
+Cloud Monitoring: Collects performance metrics (e.g., latency, request counts, error rates, resource utilization) to monitor overall system health and define alerting policies.
+
+Cloud Trace: Provides distributed tracing capabilities, following a user request’s journey from the Host Agent, through A2A delegation to sub-agents, and out to MCP calls. This is crucial for identifying latency bottlenecks in the multi-hop architecture.
+
+Summary of Key Technologies Used
+Hosting & Runtime: Google Cloud Agent Engine, Google Cloud Run.
+
+Agent Frameworks & Protocols: ADK (Agent Development Kit), A2A (Agent2Agent Protocol), MCP (Model Context Protocol), StreamableHTTP.
+
+Observability: Google Cloud Trace, Google Cloud Monitoring, Google Cloud Logging.
+
+External Data: TheCocktailDB API, National Weather Service API.
+
+![architecture](asset/adk_remote_a2a.jpeg)
 
 ### Application Screenshot
 
