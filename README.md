@@ -68,6 +68,85 @@ External Data: TheCocktailDB API, National Weather Service API.
 
 ![architecture](asset/adk_remote_a2a.jpeg)
 
+```mermaid
+graph TD
+    %% Define Styles & Colors
+    classDef ui fill:#4285F4,stroke:#fff,stroke-width:2px,color:#fff
+    classDef auth fill:#ECEFF1,stroke:#90A4AE,stroke-width:2px,stroke-dasharray: 4 4,color:#37474F
+    classDef host fill:#0F9D58,stroke:#fff,stroke-width:2px,color:#fff
+    classDef agent fill:#F4B400,stroke:#fff,stroke-width:2px,color:#fff
+    classDef mcp fill:#DB4437,stroke:#fff,stroke-width:2px,color:#fff
+    classDef api fill:#607D8B,stroke:#fff,stroke-width:2px,color:#fff
+    classDef obs fill:#9C27B0,stroke:#fff,stroke-width:2px,color:#fff
+
+    %% 1. User Interface Tier
+    subgraph Tier1 ["1. User Interface (Frontend) Tier"]
+        UI1["Front End<br/>(Custom UI for Testing)"]:::ui
+        UI2["Agentspace<br/>(Gemini Enterprise UI)"]:::ui
+    end
+
+    Auth{{"Authentication Layer"}}:::auth
+    UI1 --> Auth
+    UI2 --> Auth
+
+    %% Google Cloud Agent Engine Boundary
+    subgraph GCP_AE ["Google Cloud Agent Engine Runtime Boundary"]
+        
+        %% 2. Orchestration Tier
+        subgraph Tier2 ["2. Orchestration Tier"]
+            HA["Host Agent (ADK)<br/>Central Routing & Orchestration"]:::host
+        end
+
+        %% 3. Specialized Agent Tier
+        subgraph Tier3 ["3. Specialized Agent Tier (Domain Agents)"]
+            CA["Cocktail Agent<br/>(ADK)"]:::agent
+            WA["Weather Agent<br/>(ADK)"]:::agent
+        end
+
+        %% 5. Observability & Operations Tier
+        subgraph Tier5 ["5. Observability & Operations Tier"]
+            direction LR
+            TelemetryBus(("Telemetry Stream")):::obs
+            LOG["Cloud Logging<br/>(Auditing/Debugging)"]:::obs
+            MON["Cloud Monitoring<br/>(Health/Metrics)"]:::obs
+            TRC["Cloud Trace<br/>(Distributed Tracing)"]:::obs
+            
+            TelemetryBus -.-> LOG
+            TelemetryBus -.-> MON
+            TelemetryBus -.-> TRC
+        end
+
+        %% Internal Engine Connections
+        Auth == "Authenticated<br/>User Prompts" ===> HA
+        HA -- "A2A Protocol<br/>(via RemoteA2aAgent)" --> CA
+        HA -- "A2A Protocol<br/>(via RemoteA2aAgent)" --> WA
+
+        %% Telemetry Flow (All agents send to all 3 tools)
+        HA -. "Logs, Metrics, Traces" .-> TelemetryBus
+        CA -. "Logs, Metrics, Traces" .-> TelemetryBus
+        WA -. "Logs, Metrics, Traces" .-> TelemetryBus
+    end
+
+    %% 4. Data Integration Tier
+    subgraph Tier4 ["4. Data Integration Tier (Google Cloud Run)"]
+        CMCP["MCP Server A<br/>(Cocktail Data)"]:::mcp
+        WMCP["MCP Server B<br/>(Weather Data)"]:::mcp
+    end
+
+    %% External Connections
+    CA == "MCP over<br/>StreamableHTTP" ===> CMCP
+    WA == "MCP over<br/>StreamableHTTP" ===> WMCP
+
+    %% External APIs
+    subgraph Ext_APIs ["External Data APIs"]
+        CDB["TheCocktailDB API"]:::api
+        NWS["National Weather Service API"]:::api
+    end
+
+    CMCP -- "HTTP/REST" --> CDB
+    WMCP -- "HTTP/REST" --> NWS
+```
+
 ### Application Screenshot
 
 ![screenshot](asset/screenshot.png)
