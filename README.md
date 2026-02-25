@@ -1,8 +1,6 @@
-# A2A Multi-Agent on Agent Engine
+# Gemini Enterprise with A2A Multi-Agent on Agent Engine
 
-> **DISCLAIMER**: THIS DEMO IS INTENDED FOR DEMONSTRATION PURPOSES ONLY. IT IS NOT INTENDED FOR USE IN A PRODUCTION ENVIRONMENT.
->
-> **Important**: A2A is a work in progress (WIP) thus, in the near future there might be changes that are different from what demonstrated here.
+
 
 
 This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
@@ -48,7 +46,7 @@ MCP Server A (Cocktail Data): Receives MCP requests and queries TheCocktailDB AP
 
 MCP Server B (Weather Data): Receives MCP requests and queries the National Weather Service API via HTTP/REST to fetch forecasts and meteorological data.
 
-5. Observability & Operations Tier (New)
+5. Observability & Operations Tier
 Integrated directly within the Google Cloud Agent Engine boundary, this tier provides comprehensive insight into the health, performance, and behavior of the multi-agent system. The Host Agent, Cocktail Agent, and Weather Agent all actively send Telemetry Data (Logs, Metrics, Traces) to these services:
 
 Cloud Logging: Captures detailed logs from all agents for debugging, auditing, and analyzing agent thought processes and errors.
@@ -57,6 +55,9 @@ Cloud Monitoring: Collects performance metrics (e.g., latency, request counts, e
 
 Cloud Trace: Provides distributed tracing capabilities, following a user request’s journey from the Host Agent, through A2A delegation to sub-agents, and out to MCP calls. This is crucial for identifying latency bottlenecks in the multi-hop architecture.
 
+6. Security & Secret Management Tier
+Sensitive credentials, such as OAuth Client IDs and Secrets required for Gemini Enterprise integration, are securely stored and managed using Google Cloud Secret Manager. This ensures that no secrets are hardcoded in the application source code or repository.
+
 Summary of Key Technologies Used
 Hosting & Runtime: Google Cloud Agent Engine, Google Cloud Run.
 
@@ -64,9 +65,13 @@ Agent Frameworks & Protocols: ADK (Agent Development Kit), A2A (Agent2Agent Prot
 
 Observability: Google Cloud Trace, Google Cloud Monitoring, Google Cloud Logging.
 
+Security: Google Cloud Secret Manager.
+
 External Data: TheCocktailDB API, National Weather Service API.
 
-![architecture](asset/adk_remote_a2a.jpeg)
+![architecture](assets/a2a_adk_ge.jpeg)
+
+Here is the mermaid diagram of the workflow:
 
 ```mermaid
 graph TD
@@ -149,7 +154,7 @@ graph TD
 
 ### Application Screenshot
 
-![screenshot](asset/screenshot.png)
+![screenshot](assets/screenshot.png)
 
 ## Core Components
 
@@ -376,7 +381,7 @@ python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(
 ---
 
 ## CI/CD Setup with Google Cloud Build V2
-![cicd_pipeline](asset/google_cloudbuild.jpeg)
+![cicd_pipeline](assets/google_cloudbuild.jpeg)
 You have two options for setting up CI/CD:
 
 ### Option 1: Quick Setup with agent-starter-pack (Recommended)
