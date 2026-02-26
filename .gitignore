@@ -406,6 +406,7 @@ client_secret.json
 .secrets.baseline
 
 # Agent / AI Configuration
+.adk/
 .claude/
 .agent/
 .gemini/
