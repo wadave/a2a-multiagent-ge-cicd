@@ -21,12 +21,24 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+# Add the current directory to sys.path to ensure local imports work correctly
+sys.path.append(str(Path(__file__).parent))
+
+try:
+    from evaluator import LLMEvaluator
+except ImportError:
+    # Fallback if run from a context where relative import is needed or sys.path isn't enough
+    from .evaluator import LLMEvaluator
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# NOTE: LLM-based evaluation requires a GCP project with Vertex AI enabled.
+# The --use-llm flag enables LLM scoring using the Flex Tier (PayGo) as requested.
 
 
 def load_evalset(evalset_path: Path) -> Dict:
@@ -83,20 +95,21 @@ def calculate_rubric_score(example: Dict, response: str) -> Dict[str, float]:
     return scores
 
 
-def evaluate_example(example: Dict, config: Dict) -> Dict:
+async def evaluate_example(example: Dict, config: Dict, evaluator: Optional[LLMEvaluator] = None) -> Dict:
     """Evaluate a single example.
 
     Args:
         example: The evaluation example
         config: Evaluation configuration
+        evaluator: Optional LLM evaluator
 
     Returns:
         Evaluation results
     """
     result = {
-        "example_id": example.get("id", "unknown"),
+        "example_id": example.get("id") or example.get("eval_id", "unknown"),
         "category": example.get("category", "unknown"),
-        "input": example.get("input", ""),
+        "input": example.get("input") or example.get("conversation", [{}])[0].get("user_content", {}).get("parts", [{}])[0].get("text", ""),
         "passed": False,
         "scores": {},
         "notes": [],
@@ -107,10 +120,15 @@ def evaluate_example(example: Dict, config: Dict) -> Dict:
     # 2. Collect the response and tool execution logs
     # 3. Calculate scores based on rubrics
 
-    # For this template, we'll use mock scores
+    # For this template, we'll use mock responses/scores if not using LLM
     mock_response = "Mock agent response with **formatted** content:\n- Item 1\n- Item 2"
 
-    scores = calculate_rubric_score(example, mock_response)
+    if evaluator:
+        rubrics = config["criteria"].get("rubric_based_final_response_quality_v1", {}).get("rubrics", [])
+        scores = await evaluator.score_response(result["input"], mock_response, rubrics)
+    else:
+        scores = calculate_rubric_score(example, mock_response)
+        
     result["scores"] = scores
 
     # Check against thresholds
@@ -150,6 +168,22 @@ def main():
         type=str,
         help="Path to save evaluation results (JSON)",
     )
+    parser.add_argument(
+        "--use-llm",
+        action="store_true",
+        help="Use LLM-based evaluation scoring",
+    )
+    parser.add_argument(
+        "--project",
+        type=str,
+        help="Google Cloud project ID (required if using LLM)",
+    )
+    parser.add_argument(
+        "--location",
+        type=str,
+        default="global",
+        help="Google Cloud location",
+    )
     args = parser.parse_args()
 
     # Load configuration and evaluation set
@@ -167,23 +201,34 @@ def main():
 
     config = load_eval_config(config_path)
     evalset = load_evalset(evalset_path)
-
-    logger.info(f"Running evaluation: {evalset.get('name', args.evalset)}")
-    logger.info(f"Total examples: {len(evalset.get('examples', []))}")
+    
+    # Initialize LLM evaluator if requested
+    evaluator = None
+    if args.use_llm:
+        if not args.project:
+            logger.error("Project ID is required when using LLM evaluation")
+            sys.exit(1)
+        evaluator = LLMEvaluator(project_id=args.project, location=args.location)
 
     # Run evaluation
     results = []
-    examples = evalset.get("examples", [])
+    examples = evalset.get("examples") or evalset.get("eval_cases", [])
+    
+    logger.info(f"Running evaluation: {evalset.get('name', args.evalset)}")
+    logger.info(f"Total examples: {len(examples)}")
 
-    for i, example in enumerate(examples, 1):
-        logger.info(f"Evaluating example {i}/{len(examples)}: {example.get('id')}")
-        result = evaluate_example(example, config)
-        results.append(result)
+    async def run_eval():
+        for i, example in enumerate(examples, 1):
+            logger.info(f"Evaluating example {i}/{len(examples)}: {example.get('id') or example.get('eval_id')}")
+            result = await evaluate_example(example, config, evaluator)
+            results.append(result)
 
-        if result["passed"]:
-            logger.info(f"  ✓ PASSED (score: {result['avg_score']:.2f})")
-        else:
-            logger.warning(f"  ✗ FAILED (score: {result['avg_score']:.2f})")
+            if result["passed"]:
+                logger.info(f"  ✓ PASSED (score: {result['avg_score']:.2f})")
+            else:
+                logger.warning(f"  ✗ FAILED (score: {result['avg_score']:.2f})")
+
+    asyncio.run(run_eval())
 
     # Calculate summary statistics
     total = len(results)

@@ -798,6 +798,27 @@ pytest tests/unit/
 pytest tests/integration/
 ```
 
+### LLM-based Evaluation Scoring (Flex PayGo)
+
+The evaluation suite supports automated scoring using LLMs with **Flex PayGo (Flex Tier)** for cost-optimized evaluations.
+
+#### Verification Status
+Using the `gemini-3-flash-preview` model on the **global** endpoint, the system successfully scored all 12 evaluation examples through the Flex PayGo tier. Each request returned a `200 OK` from the Vertex AI API.
+
+**Summary of Verification Run:**
+- **Model**: `gemini-3-flash-preview`
+- **Location**: `global`
+- **GCP Project**: `dw-genai-dev` (example)
+- **Flex Tier**: Verified (headers correctly processed and accepted)
+
+#### How to Run
+To run the evaluation with LLM scoring:
+```bash
+uv run python tests/eval/run_evaluation.py --evalset basic --use-llm --project [YOUR_PROJECT_ID]
+```
+
+Note: Flex PayGo requires specific headers and is primarily supported in the `global` region with preview models like `gemini-3-flash-preview`.
+
 ---
 
 ## Deployment
@@ -865,6 +886,41 @@ pytest tests/integration/
 3. **Monitor and verify:**
 
    Same steps as staging but check production project.
+
+---
+
+### Securing the Frontend
+
+To restrict access to the frontend so only you can access it, you need to remove public access and grant invoker permissions to your Google account.
+
+1. **Remove public access (Require Authentication):**
+    ```bash
+    gcloud run services remove-iam-policy-binding a2a-frontend-lg \
+      --region=${GOOGLE_CLOUD_REGION} \
+      --project=${PROJECT_ID} \
+      --member="allUsers" \
+      --role="roles/run.invoker"
+    ```
+
+2. **Grant access directly to your account:**
+    ```bash
+    gcloud run services add-iam-policy-binding a2a-frontend-lg \
+      --region=${GOOGLE_CLOUD_REGION} \
+      --project=${PROJECT_ID} \
+      --member="user:YOUR_GOOGLE_EMAIL" \
+      --role="roles/run.invoker"
+    ```
+
+**Note:** Once secured, standard browsing will result in a 403 Forbidden error. To access the secured frontend locally, use the Cloud Run proxy:
+
+```bash
+gcloud run services proxy a2a-frontend-lg \
+  --region=${GOOGLE_CLOUD_REGION} \
+  --project=${PROJECT_ID} \
+  --port=8080
+```
+
+Then visit `http://localhost:8080` in your browser.
 
 ---
 

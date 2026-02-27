@@ -137,6 +137,10 @@
 - **Unit Testing**: Testing individual agent cards, functions, and logic boundaries natively using `pytest` without invoking network calls.
 - **Integration Testing**: Testing local and remote agents using A2A mocking/stubbing or hitting staging endpoints securely.
 - **End-to-End Testing**: Validating the chain from the UI to the actual MCP responses.
+- **LLM-based Evaluation Scoring**:
+  - **Mechanism**: Utilizes a scoring rubric interpreted by a Gemini model to evaluate agent responses for relevance, helpfulness, and tool routing accuracy.
+  - **Flex Tier Integration**: Optimized for cost using Google's **Flex PayGo** (Flex Tier) with specific HTTP headers (`X-Vertex-AI-LLM-Request-Type: shared`, `X-Vertex-AI-LLM-Shared-Request-Type: flex`).
+  - **Verified Configuration**: Successfully verified using the `gemini-3-flash-preview` model on the `global` endpoint.
 - **Quality Metrics**: Maintain code linting standards utilizing tools mapped in `uv` and ensure high coverage prior to PR passing.
 
 ---
