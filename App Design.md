@@ -26,9 +26,10 @@
 - **System Context Diagram**:
   ```mermaid
   graph TD
-      User[User / Analyst] --> UI[Agentspace / Custom UI]
+      User[User / Analyst] --> UI[Gemini Enterprise / Custom UI]
       UI --> Auth[Authentication Layer]
-      Auth --> Host[Host Agent / Route]
+      Auth --> MA[Model Armor / Threat Detection]
+      MA --> Host[Host Agent / Route]
       Host -->|A2A Protocol| CocktailAgent[Cocktail Domain Agent]
       Host -->|A2A Protocol| WeatherAgent[Weather Domain Agent]
       CocktailAgent -->|MCP Protocol| CocktailMCP[Cocktail MCP Server]
@@ -89,7 +90,7 @@
 ---
 
 ## 6. External Interfaces
-- **User Interface**: agentspace (Gemini Enterprise) and a custom Gradio testing frontend.
+- **User Interface**: Gemini Enterprise and a custom Gradio testing frontend.
 - **External APIs**: 
   - *TheCocktailDB API*: Fetch recipes, lists, and ingredient data.
   - *National Weather Service (NWS) API*: Fetch localized weather forecasts.

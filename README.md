@@ -23,7 +23,7 @@ Users interact with the system through two primary authenticated entry points. B
 
 Front End (Custom UI For Tesging purpose): A bespoke web or mobile application built for end-user interaction.
 
-Agentspace (Gemini Enterprise UI): An enterprise-grade interface for interacting with the AI system.
+Gemini Enterprise UI: An enterprise-grade interface for interacting with the AI system.
 
 2. Orchestration Tier (Host Agent)
 This is the central routing and orchestration hub, hosted within the Google Cloud Agent Engine.
@@ -92,7 +92,7 @@ graph TD
     %% 1. User Interface Tier
     subgraph Tier1 ["1. User Interface (Frontend) Tier"]
         UI1["Front End<br/>(Custom UI for Testing)"]:::ui
-        UI2["Agentspace<br/>(Gemini Enterprise UI)"]:::ui
+        UI2["Gemini Enterprise UI"]:::ui
     end
 
     Auth{{"Authentication Layer"}}:::auth
