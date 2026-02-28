@@ -90,7 +90,7 @@ graph TD
     classDef security fill:#FF9800,stroke:#fff,stroke-width:2px,color:#fff
 
     %% 1. User Interface Tier
-    subgraph Tier1 ["1. User Interface (Frontend) Tier"]
+    subgraph Tier1 ["1. User Interface Tier"]
         UI1["Front End<br/>(Custom UI for Testing)"]:::ui
         UI2["Gemini Enterprise UI"]:::ui
     end
