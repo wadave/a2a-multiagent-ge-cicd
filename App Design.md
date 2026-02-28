@@ -20,7 +20,7 @@
 - **Design Goals**:
   - **Modularity**: Separation of concerns between orchestration, domain logic, and data retrieval.
   - **Observability**: Deep telemetry across the multi-hop agent execution path.
-  - **Security**: Zero-trust approach with dedicated Service Accounts, IAM boundaries, and Secret Manager integration.
+  - **Security & Resilience**: Zero-trust approach with dedicated Service Accounts, Secret Manager integration, Model Armor for LLM security, and HTTP Circuit Breakers preventing cascading failure.
   - **Automation**: Fully automated CI/CD pipelines via Terraform and Cloud Build.
 - **Architecture Summary**: Serverless multi-agent orchestration (Google Cloud Agent Engine) paired with serverless data retrieval (Google Cloud Run).
 - **System Context Diagram**:
@@ -101,14 +101,16 @@
 - **Authentication**: User authentication at the UI boundary. Service-to-service authentication is implicitly handled by Google Cloud IAM (e.g., Agent Engine invoking Cloud Run).
 - **Authorization**: Strict Principle of Least Privilege. Separate Service Accounts for CI/CD runners (`a2a-multiagent-ge-cicd-cb`) and application runtime (`a2a-multiagent-ge-cicd-app`).
 - **Data Protection**: Secrets (OAuth tokens, API keys) are strictly managed via Google Secret Manager. No hardcoded credentials. Terraform state is encrypted in GCS.
+- **LLM Security**: Google Cloud Model Armor is enabled via Terraform (configured via Floor Settings) to automatically inspect and block malicious prompts and prevent sensitive data exfiltration in model responses.
 - **Threat Model**:
   - *Unauthorized Access*: Mitigated by strict Cloud IAM permissions.
-  - *Data Exfiltration via Agents*: Mitigated by scoping MCP server actions tightly (read-only downstream APIs).
+  - *Data Exfiltration via Agents*: Mitigated by scoping MCP server actions tightly (read-only downstream APIs) and by Model Armor inspection.
 
 ---
 
-## 8. Observability, Performance & Scalability
+## 8. Observability, Performance, Scalability & Resilience
 - **Scalability**: Both Agent Engine and Cloud Run automatically scale horizontally based on incoming traffic.
+- **Resilience**: An HTTP Circuit Breaker pattern is implemented (using `aiobreaker`) on the shared asynchronous HTTP client. This ensures that if downstream MCP servers or external APIs experience outages, the system "fails fast" (returning HTTP 503) rather than hanging and consuming resources.
 - **Deep Observability (Telemetry)**:
   - **Cloud Logging**: Captures step-by-step agent thought processes, action selections, and runtime errors.
   - **Cloud Trace**: Crucial for A2A multi-hop requests. Enables visualization of latency across Frontend -> Host Agent -> Sub-agent -> MCP Server -> External API.

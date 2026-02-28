@@ -11,6 +11,8 @@ This application demonstrates the integration of Google's Open Source frameworks
 
 ### Architecture
 
+![architecture](assets/a2a_adk_armor.jpeg)
+
 The application utilizes a multi-agent architecture where a host agent delegates tasks to remote A2A agents (Cocktail and Weather) based on the user's query. These agents then interact with corresponding remote MCP servers.
 
 **Host Agent is built using Agent Engine server and ADK agents.**
@@ -55,8 +57,10 @@ Cloud Monitoring: Collects performance metrics (e.g., latency, request counts, e
 
 Cloud Trace: Provides distributed tracing capabilities, following a user request’s journey from the Host Agent, through A2A delegation to sub-agents, and out to MCP calls. This is crucial for identifying latency bottlenecks in the multi-hop architecture.
 
-6. Security & Secret Management Tier
+6. Security, Resilience & Secret Management Tier
 Sensitive credentials, such as OAuth Client IDs and Secrets required for Gemini Enterprise integration, are securely stored and managed using Google Cloud Secret Manager. This ensures that no secrets are hardcoded in the application source code or repository.
+Model Armor is integrated at the infrastructure level to automatically inspect and block threats in LLM prompts and responses, protecting against prompt injection and data exfiltration.
+An HTTP Circuit Breaker (using `aiobreaker`) is implemented within the agent execution flow to prevent catastrophic cascading failures when external services or MCP servers are unavailable.
 
 Summary of Key Technologies Used
 Hosting & Runtime: Google Cloud Agent Engine, Google Cloud Run.
@@ -65,11 +69,11 @@ Agent Frameworks & Protocols: ADK (Agent Development Kit), A2A (Agent2Agent Prot
 
 Observability: Google Cloud Trace, Google Cloud Monitoring, Google Cloud Logging.
 
-Security: Google Cloud Secret Manager.
+Security & Resilience: Google Cloud Secret Manager, Model Armor (LLM Security), aiobreaker (HTTP Circuit Breaker).
 
 External Data: TheCocktailDB API, National Weather Service API.
 
-![architecture](assets/a2a_adk_ge.jpeg)
+
 
 Here is the mermaid diagram of the workflow:
 
@@ -83,6 +87,7 @@ graph TD
     classDef mcp fill:#DB4437,stroke:#fff,stroke-width:2px,color:#fff
     classDef api fill:#607D8B,stroke:#fff,stroke-width:2px,color:#fff
     classDef obs fill:#9C27B0,stroke:#fff,stroke-width:2px,color:#fff
+    classDef security fill:#FF9800,stroke:#fff,stroke-width:2px,color:#fff
 
     %% 1. User Interface Tier
     subgraph Tier1 ["1. User Interface (Frontend) Tier"]
@@ -91,8 +96,10 @@ graph TD
     end
 
     Auth{{"Authentication Layer"}}:::auth
+    MA{{"Model Armor<br/>(Threat Detection)"}}:::security
     UI1 --> Auth
     UI2 --> Auth
+    Auth --> MA
 
     %% Google Cloud Agent Engine Boundary
     subgraph GCP_AE ["Google Cloud Agent Engine Runtime Boundary"]
@@ -122,7 +129,7 @@ graph TD
         end
 
         %% Internal Engine Connections
-        Auth == "Authenticated<br/>User Prompts" ===> HA
+        MA == "Sanitized<br/>User Prompts" ===> HA
         HA -- "A2A Protocol<br/>(via RemoteA2aAgent)" --> CA
         HA -- "A2A Protocol<br/>(via RemoteA2aAgent)" --> WA
 
