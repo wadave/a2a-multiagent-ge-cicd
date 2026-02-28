@@ -87,3 +87,12 @@ resource "google_service_account_iam_member" "cicd_impersonate_app_sa" {
   member             = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
+
+# Grant the CI/CD service account Model Armor Admin to manage floor settings
+resource "google_project_iam_member" "github_runner_modelarmor_admin" {
+  for_each = local.deploy_project_ids
+
+  project = each.value
+  role    = "roles/modelarmor.admin"
+  member  = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
+}

@@ -145,7 +145,38 @@
 
 ---
 
-## 11. Appendices
+## 11. AI Lifecycle Management
+This section documents the mechanisms for managing the agent's lifecycle, from configuration to evaluation and runtime operations.
+
+- **Prompt and Agent Configuration Management**:
+  - **Centralized Logic**: Model selections, instructions, and environment-specific variables are defined in [agent_configs.py](file:///usr/local/google/home/wangdave/remote_ws/projects/a2a-multiagent-ge-cicd/src/a2a_agents/common/agent_configs.py).
+  - **Secret Management**: Sensitive credentials (OAuth tokens, API keys) are strictly managed via Google Secret Manager, ensuring no leak into the source repository.
+- **Experiment Tracking (Evaluation)**:
+  - **Mechanism**: A dedicated evaluation suite in [tests/eval/](file:///usr/local/google/home/wangdave/remote_ws/projects/a2a-multiagent-ge-cicd/tests/eval/) supports rubric-based scoring.
+  - **LLM-as-a-Judge**: Utilizes Gemini models on the Flex Tier (PayGo) to evaluate relevance, helpfulness, and routing accuracy.
+- **Agent Operational Tooling**:
+  - **Deployment Automation**: Python scripts in [deployment/](file:///usr/local/google/home/wangdave/remote_ws/projects/a2a-multiagent-ge-cicd/deployment/) orchestrate the creation and update of Reasoning Engines and Cloud Run services.
+  - **Telemetry Integration**: Native integration with Cloud Trace, Logging, and Monitoring provides real-time visibility into agentic multi-hop execution.
+
+---
+
+## 12. Compliance and Governance
+This section details the framework for ensuring data integrity, regional compliance, and adherence to enterprise security policies.
+
+- **Audit Logging and Retention**:
+  - **Dedicated Log Storage**: GenAI inference details are routed to a custom Cloud Logging bucket (`genai-telemetry`) with an explicit **10-year retention policy**, meeting standard regulatory audit requirements.
+  - **BigQuery Integration**: Logs are linked to BigQuery datasets, enabling advanced compliance reporting and periodic auditing of multi-agent interactions.
+- **Data Residency and Sovereignty**:
+  - **Regional Pinning**: All core infrastructure, including Agent Engine runtimes, Cloud Run services, and Logging buckets, are pinned to the `us-central1` region by default to ensure data residency compliance.
+- **Policy Enforcement**:
+  - **Principle of Least Privilege (PoLP)**: IAM roles are granularly assigned to the CICD and Application service accounts, strictly limiting access to required Google Cloud services (AI Platform, Secret Manager, Logging).
+  - **Secure Identity**: Integration with Gemini Enterprise via OAuth2 ensures that all agent interactions are performed within a verified organizational identity context.
+
+---
+
+## 13. Appendices
 - **Directory Structure**: Refer to `README.md` for standard repository mapping.
 - **Change History**: 
   - [v1.0.0, Current Date, Initial Architecture Design]
+  - [v1.0.1, 2026-02-27, Added AI Lifecycle Management section]
+  - [v1.0.2, 2026-02-27, Added Compliance and Governance section]

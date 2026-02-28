@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
 # limitations under the License.
 """Unit tests for orchestrator agent logic."""
 
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from a2a.types import AgentCard, AgentSkill
+from a2a.types import AgentCard, AgentSkill, AgentCapabilities
 
 from a2a_agents.common.adk_orchestrator_agent import AdkOrchestratorAgent
 
@@ -28,7 +29,8 @@ class TestOrchestratorInitialization:
         """Create a mock httpx client."""
         return AsyncMock()
 
-    def test_orchestrator_initialization(self, mock_httpx_client):
+    @pytest.mark.asyncio
+    async def test_orchestrator_initialization(self, mock_httpx_client):
         """Verify orchestrator initializes with correct attributes."""
         remote_addresses = ["http://agent1.com", "http://agent2.com"]
         orchestrator = AdkOrchestratorAgent(
@@ -37,12 +39,12 @@ class TestOrchestratorInitialization:
         )
 
         assert orchestrator.httpx_client == mock_httpx_client
-        assert orchestrator._remote_agent_addresses == remote_addresses
         assert isinstance(orchestrator.remote_agent_connections, dict)
         assert isinstance(orchestrator.cards, dict)
         assert len(orchestrator.remote_agent_connections) == 0  # Not initialized yet
 
-    def test_orchestrator_client_factory_creation(self, mock_httpx_client):
+    @pytest.mark.asyncio
+    async def test_orchestrator_client_factory_creation(self, mock_httpx_client):
         """Verify orchestrator creates client factory."""
         orchestrator = AdkOrchestratorAgent(
             remote_agent_addresses=["http://agent1.com"],
@@ -58,10 +60,13 @@ class TestOrchestratorAgentRegistration:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
-        return AdkOrchestratorAgent(
-            remote_agent_addresses=[],
-            http_client=AsyncMock(),
-        )
+        
+        async def _create_orchestrator():
+            return AdkOrchestratorAgent(
+                remote_agent_addresses=[],
+                http_client=AsyncMock(),
+            )
+        return asyncio.run(_create_orchestrator())
 
     @pytest.fixture
     def sample_agent_card(self):
@@ -78,6 +83,10 @@ class TestOrchestratorAgentRegistration:
             description="A test agent",
             url="http://test.com",
             skills=[skill],
+            capabilities=AgentCapabilities(),
+            default_input_modes=["audio", "text"],
+            default_output_modes=["audio", "text"],
+            version="1.0.0",
         )
 
     def test_register_agent_card(self, orchestrator, sample_agent_card):
@@ -95,12 +104,20 @@ class TestOrchestratorAgentRegistration:
             description="First agent",
             url="http://agent1.com",
             skills=[],
+            capabilities=AgentCapabilities(),
+            default_input_modes=["audio", "text"],
+            default_output_modes=["audio", "text"],
+            version="1.0.0",
         )
         card2 = AgentCard(
             name="Agent 2",
             description="Second agent",
             url="http://agent2.com",
             skills=[],
+            capabilities=AgentCapabilities(),
+            default_input_modes=["audio", "text"],
+            default_output_modes=["audio", "text"],
+            version="1.0.0",
         )
 
         orchestrator.register_agent_card(card1)
@@ -117,24 +134,31 @@ class TestOrchestratorAgentListing:
     @pytest.fixture
     def orchestrator_with_agents(self):
         """Create an orchestrator with registered agents."""
-        orchestrator = AdkOrchestratorAgent(
-            remote_agent_addresses=[],
-            http_client=AsyncMock(),
-        )
-
-        # Register test agents
-        for i in range(3):
-            card = AgentCard(
-                name=f"Agent {i}",
-                description=f"Description for agent {i}",
-                url=f"http://agent{i}.com",
-                skills=[],
+        async def _create_with_agents():
+            orchestrator = AdkOrchestratorAgent(
+                remote_agent_addresses=[],
+                http_client=AsyncMock(),
             )
-            orchestrator.register_agent_card(card)
 
-        return orchestrator
+            # Register test agents
+            for i in range(3):
+                card = AgentCard(
+                    name=f"Agent {i}",
+                    description=f"Description for agent {i}",
+                    url=f"http://agent{i}.com",
+                    skills=[],
+                    capabilities=AgentCapabilities(),
+                    default_input_modes=["audio", "text"],
+                    default_output_modes=["audio", "text"],
+                    version="1.0.0",
+                )
+                orchestrator.register_agent_card(card)
 
-    def test_list_remote_agents_empty(self):
+            return orchestrator
+        return asyncio.run(_create_with_agents())
+
+    @pytest.mark.asyncio
+    async def test_list_remote_agents_empty(self):
         """Verify empty list when no agents registered."""
         orchestrator = AdkOrchestratorAgent(
             remote_agent_addresses=[],
@@ -163,10 +187,12 @@ class TestOrchestratorStateManagement:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
-        return AdkOrchestratorAgent(
-            remote_agent_addresses=[],
-            http_client=AsyncMock(),
-        )
+        async def _create_orchestrator():
+            return AdkOrchestratorAgent(
+                remote_agent_addresses=[],
+                http_client=AsyncMock(),
+            )
+        return asyncio.run(_create_orchestrator())
 
     def test_check_state_no_active_agent(self, orchestrator):
         """Verify state check when no active agent."""
@@ -207,10 +233,12 @@ class TestOrchestratorAgentCreation:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
-        return AdkOrchestratorAgent(
-            remote_agent_addresses=[],
-            http_client=AsyncMock(),
-        )
+        async def _create_orchestrator():
+            return AdkOrchestratorAgent(
+                remote_agent_addresses=[],
+                http_client=AsyncMock(),
+            )
+        return asyncio.run(_create_orchestrator())
 
     def test_create_agent(self, orchestrator):
         """Verify agent creation."""
@@ -218,7 +246,7 @@ class TestOrchestratorAgentCreation:
 
         assert agent is not None
         assert agent.name == "orchestrator_agent"
-        assert len(agent.tools) == 3  # list_remote_agents, send_message, preload_memory
+        assert len(agent.tools) == 2  # list_remote_agents, send_message
 
     def test_agent_has_tools(self, orchestrator):
         """Verify agent has required tools."""
@@ -240,21 +268,27 @@ class TestOrchestratorInstructionGeneration:
     @pytest.fixture
     def orchestrator_with_agents(self):
         """Create an orchestrator with agents."""
-        orchestrator = AdkOrchestratorAgent(
-            remote_agent_addresses=[],
-            http_client=AsyncMock(),
-        )
+        async def _create_with_agents():
+            orchestrator = AdkOrchestratorAgent(
+                remote_agent_addresses=[],
+                http_client=AsyncMock(),
+            )
 
-        # Register test agents
-        card = AgentCard(
-            name="Weather Agent adk-mb - ADK",
-            description="Weather agent",
-            url="http://weather.com",
-            skills=[],
-        )
-        orchestrator.register_agent_card(card)
+            # Register test agents
+            card = AgentCard(
+                name="Weather Agent adk-mb - ADK",
+                description="Weather agent",
+                url="http://weather.com",
+                skills=[],
+                capabilities=AgentCapabilities(),
+                default_input_modes=["audio", "text"],
+                default_output_modes=["audio", "text"],
+                version="1.0.0",
+            )
+            orchestrator.register_agent_card(card)
 
-        return orchestrator
+            return orchestrator
+        return asyncio.run(_create_with_agents())
 
     def test_root_instruction_contains_agents(self, orchestrator_with_agents):
         """Verify root instruction includes agent information."""

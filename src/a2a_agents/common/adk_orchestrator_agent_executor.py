@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 # Author: Dave Wang
 import logging
 from typing import NoReturn
+
 import httpx
+from aiobreaker import CircuitBreaker, CircuitBreakerError
 from dotenv import load_dotenv
 from google.adk import Runner
 from google.adk.artifacts import InMemoryArtifactService
@@ -44,6 +46,55 @@ logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
 
 
+# Global shared HTTP client for the orchestrator
+_shared_httpx_client: httpx.AsyncClient | None = None
+
+# Create a circuit breaker that:
+# 1. Trips open after 3 consecutive failures
+# 2. Stays open for 30 seconds before attempting a test request (half-open)
+llm_api_breaker = CircuitBreaker(fail_max=3, timeout_duration=30)
+
+
+class CircuitBreakerTransport(httpx.AsyncBaseTransport):
+    """Wraps an httpx transport to enforce an aiobreaker circuit breaker."""
+    def __init__(self, underlying: httpx.AsyncBaseTransport):
+        self._underlying = underlying
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        try:
+            @llm_api_breaker
+            async def _make_request():
+                response = await self._underlying.handle_async_request(request)
+                # We want 5xx server errors and network timeouts to count as failures
+                if getattr(response, "status_code", 200) >= 500:
+                    response.raise_for_status()
+                return response
+                
+            return await _make_request()
+        except CircuitBreakerError:
+            logging.warning(f"Circuit Breaker OPEN. Fast-failing request to {request.url}")
+            return httpx.Response(status_code=503, content=b"Circuit Breaker Open", request=request)
+        except httpx.HTTPStatusError as e:
+            # We must return the actual response object to satisfy httpx.AsyncClient
+            return e.response
+
+
+def get_shared_httpx_client() -> httpx.AsyncClient:
+    """Gets or creates a shared httpx.AsyncClient with GoogleAuth and Circuit Breaker."""
+    global _shared_httpx_client
+    if _shared_httpx_client is None:
+        base_transport = httpx.AsyncHTTPTransport(retries=0)
+        cb_transport = CircuitBreakerTransport(base_transport)
+
+        _shared_httpx_client = httpx.AsyncClient(
+            transport=cb_transport,
+            timeout=60.0,
+            auth=GoogleAuth(),
+        )
+        _shared_httpx_client.headers["Content-Type"] = "application/json"
+    return _shared_httpx_client
+
+
 class AdkOrchestratorAgentExecutor(AgentExecutor):
     """Agent Executor that bridges A2A protocol with our ADK agent.
 
@@ -71,11 +122,9 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         """
         if self.agent is None:
             # --- Environment setup ---
-            httpx_client = httpx.AsyncClient(
-                timeout=120,
-                auth=GoogleAuth(),
-            )
-            httpx_client.headers["Content-Type"] = "application/json"
+            # Use the shared HTTP client for efficiency and connection pooling
+            httpx_client = get_shared_httpx_client()
+
             # Create the actual agent
             self.agent = await get_orchestrator_agent(
                 remote_agent_addresses=self.remote_agent_addresses, httpx_client=httpx_client
