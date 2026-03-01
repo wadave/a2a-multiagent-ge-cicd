@@ -30,6 +30,7 @@ locals {
 
 # Fetch OAuth credentials from Secret Manager
 data "google_secret_manager_secret_version" "oauth_client_secret" {
+  count    = var.oauth_client_id_secret_name != "" ? 1 : 0
   provider = google
   secret   = var.oauth_client_id_secret_name
   project  = local.deploy_project_ids["staging"]
@@ -37,9 +38,9 @@ data "google_secret_manager_secret_version" "oauth_client_secret" {
 
 # Parse the JSON payload to extract credentials
 locals {
-  oauth_secret_data   = jsondecode(data.google_secret_manager_secret_version.oauth_client_secret.secret_data)
-  oauth_client_id     = local.oauth_secret_data["web"]["client_id"]
-  oauth_client_secret = local.oauth_secret_data["web"]["client_secret"]
+  oauth_secret_data   = var.oauth_client_id_secret_name != "" ? jsondecode(data.google_secret_manager_secret_version.oauth_client_secret[0].secret_data) : {}
+  oauth_client_id     = var.oauth_client_id_secret_name != "" ? local.oauth_secret_data["web"]["client_id"] : ""
+  oauth_client_secret = var.oauth_client_id_secret_name != "" ? local.oauth_secret_data["web"]["client_secret"] : ""
 }
 
 # Create Gemini Enterprise Authorization
