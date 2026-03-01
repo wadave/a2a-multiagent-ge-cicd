@@ -77,6 +77,7 @@ variable "cicd_roles" {
     "roles/cloudtrace.agent",
     "roles/artifactregistry.writer",
     "roles/cloudbuild.builds.builder",
+    "roles/cloudbuild.connectionViewer",
     "roles/serviceusage.serviceUsageAdmin",
     "roles/run.admin"
   ]
