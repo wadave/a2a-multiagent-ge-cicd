@@ -18,6 +18,7 @@ data "google_project" "staging" {
 }
 
 data "google_project" "prod" {
+  count      = var.prod_project_id != "" ? 1 : 0
   project_id = var.prod_project_id
 }
 
@@ -101,6 +102,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
 
 # c. Create Deploy to production trigger
 resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
+  count           = var.prod_project_id != "" ? 1 : 0
   name            = "deploy-${var.project_name}"
   project         = var.cicd_runner_project_id
   location        = var.region
@@ -116,7 +118,7 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   }
   substitutions = {
     _PROD_PROJECT_ID          = var.prod_project_id
-    _PROJECT_NUMBER           = data.google_project.prod.number
+    _PROJECT_NUMBER           = var.prod_project_id != "" ? data.google_project.prod[0].number : ""
     _LOGS_BUCKET_NAME_PROD    = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name
     _APP_SERVICE_ACCOUNT_PROD = google_service_account.app_sa["prod"].email
     _REGION                   = var.region
