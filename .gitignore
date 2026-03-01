@@ -388,6 +388,7 @@ cython_debug/
 *.tfvars
 .terraform*
 .terraform/
+vars/
 
 # ==========================
 # Project Specific / Secrets
