@@ -5,6 +5,66 @@
 
 This document describes a multi-agent set up using Agent2Agent (A2A), ADK, Agent Engine, MCP servers, and the ADK extension for A2A. It provides an overview of how the A2A protocol works between agents, and how the extension is activated on the server and included in the response.
 
+## Table of Contents
+
+- [Overview](#overview)
+  - [Architecture](#architecture)
+  - [Application Screenshot](#application-screenshot)
+- [Core Components](#core-components)
+  - [Agents](#agents)
+  - [MCP Servers and Tools](#mcp-servers-and-tools)
+- [Project Structure](#project-structure)
+- [Example Usage](#example-usage)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+- [CI/CD Setup with Google Cloud Build V2](#cicd-setup-with-google-cloud-build-v2)
+  - [Option 1: Quick Setup with agent-starter-pack (Recommended)](#option-1-quick-setup-with-agent-starter-pack-recommended)
+  - [Option 2: Manual Setup with Terraform](#option-2-manual-setup-with-terraform)
+    - [Step 1: Create GitHub Personal Access Token (PAT)](#step-1-create-github-personal-access-token-pat)
+    - [Step 2: Configure Terraform Variables](#step-2-configure-terraform-variables)
+    - [Step 3: Configure Terraform Backend](#step-3-configure-terraform-backend)
+    - [Step 4: Initialize and Apply Terraform](#step-4-initialize-and-apply-terraform)
+    - [Step 5: Authorize GitHub Connection](#step-5-authorize-github-connection)
+    - [Step 6: Verify Setup](#step-6-verify-setup)
+- [CI/CD Pipeline Details](#cicd-pipeline-details)
+  - [How Environment Variables Flow Through CI/CD](#how-environment-variables-flow-through-cicd)
+  - [PR Checks Pipeline (`.cloudbuild/pr_checks.yaml`)](#pr-checks-pipeline-cloudbuildpr_checksyaml)
+  - [Staging Deployment Pipeline (`.cloudbuild/staging.yaml`)](#staging-deployment-pipeline-cloudbuildstagingyaml)
+  - [Production Deployment Pipeline (`.cloudbuild/deploy-to-prod.yaml`)](#production-deployment-pipeline-cloudbuilddeploy-to-prodyaml)
+  - [Important: MCP URL Trailing Slash](#important-mcp-url-trailing-slash)
+- [Local Development & Testing Setup](#local-development--testing-setup)
+  - [Understanding Environment Variables](#understanding-environment-variables)
+  - [Step 1: Get Your GCP Information](#step-1-get-your-gcp-information)
+  - [Step 2: Configure Local Environment Variables](#step-2-configure-local-environment-variables)
+    - [Option A: Copy Example Files](#option-a-copy-example-files)
+    - [Option B: Create from Scratch](#option-b-create-from-scratch)
+  - [Step 3: Install Dependencies](#step-3-install-dependencies)
+  - [Step 4: Test Configuration](#step-4-test-configuration)
+  - [Testing Individual Components](#testing-individual-components)
+    - [1. Test MCP Servers Locally](#1-test-mcp-servers-locally)
+    - [2. Test Agents Locally](#2-test-agents-locally)
+    - [3. Test Frontend Locally](#3-test-frontend-locally)
+  - [Running All Tests](#running-all-tests)
+  - [LLM-based Evaluation Scoring (Flex PayGo)](#llm-based-evaluation-scoring-flex-paygo)
+    - [Verification Status](#verification-status)
+    - [How to Run](#how-to-run)
+- [Deployment](#deployment)
+  - [Deploy to Staging](#deploy-to-staging)
+  - [Deploy to Production](#deploy-to-production)
+  - [Securing the Frontend](#securing-the-frontend)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+    - [1. MCP Connection Failures](#1-mcp-connection-failures)
+    - [2. Frontend Can't Connect to Agent](#2-frontend-cant-connect-to-agent)
+    - [3. Cloud Build Trigger Not Working](#3-cloud-build-trigger-not-working)
+    - [4. Permission Errors](#4-permission-errors)
+  - [Debugging Tips](#debugging-tips)
+- [Resource Naming Conventions](#resource-naming-conventions)
+- [Additional Resources](#additional-resources)
+- [Security Best Practices](#security-best-practices)
+- [Disclaimer](#disclaimer)
+- [License](#license)
+
 ## Overview
 
 This application demonstrates the integration of Google's Open Source frameworks Agent2Agent (A2A) and Agent Development Kit (ADK) for multi-agent orchestration with Model Context Protocol (MCP) clients. The application features a host agent coordinating tasks between specialized remote A2A agents that interact with various MCP servers to fulfill user requests.
@@ -277,118 +337,10 @@ Here are some example questions you can ask the chatbot:
 
 ---
 
-## Configuration Setup
-
-### Understanding Environment Variables
-
-This project uses environment variables in multiple locations:
-
-1. **Local Testing**: `src/a2a_agents/.env` and `src/frontend/.env`
-2. **Deployment**: `.env.deploy` (for manual deployments)
-3. **CI/CD**: Terraform variables → Cloud Build substitutions
-4. **Tests**: `tests/test_config.py` (loads from `.env.deploy`)
-
-### Step 1: Get Your GCP Information
-
-Before configuring, gather this information:
-
-```bash
-# Get your project IDs
-gcloud projects list
-
-# Get project numbers (needed for agents)
-gcloud projects describe YOUR_STAGING_PROJECT_ID --format="value(projectNumber)"
-gcloud projects describe YOUR_PROD_PROJECT_ID --format="value(projectNumber)"
-
-# Note your region (typically us-central1)
-REGION="us-central1"
-```
-
-### Step 2: Configure for Local Testing
-
-#### Option A: Copy Example Files
-
-```bash
-# Copy environment templates
-cp .env.example .env.deploy
-cp src/a2a_agents/.env.example src/a2a_agents/.env
-cp src/frontend/.env.example src/frontend/.env
-```
-
-#### Option B: Create from Scratch
-
-**Create `.env.deploy`:**
-
-```bash
-# Deployment environment variables
-PROJECT_ID=your-staging-project-id
-GOOGLE_CLOUD_REGION=us-central1
-APP_SERVICE_ACCOUNT=a2a-multiagent-ge-cicd-app@your-staging-project-id.iam.gserviceaccount.com
-DISPLAY_NAME_SUFFIX=Staging
-BUCKET_NAME=your-staging-project-id-bucket
-
-# MCP Server URLs (will be set after MCP servers are deployed)
-# IMPORTANT: Include /mcp/ with trailing slash
-CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
-WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
-```
-
-**Create `src/a2a_agents/.env`:**
-
-```bash
-# Vertex AI Configuration
-GOOGLE_GENAI_USE_VERTEXAI=True
-GOOGLE_CLOUD_PROJECT=your-staging-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
-
-# Project Configuration
-PROJECT_ID=your-staging-project-id
-PROJECT_NUMBER=your-project-number
-
-# MCP Server URLs (after deployment)
-# IMPORTANT: Include /mcp/ with trailing slash
-CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
-WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
-
-# Agent URLs (after agent deployment)
-CT_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/COCKTAIL_AGENT_ID/a2a
-WEA_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/WEATHER_AGENT_ID/a2a
-```
-
-**Create `src/frontend/.env`:**
-
-```bash
-# Frontend Configuration
-PROJECT_ID=your-staging-project-id
-PROJECT_NUMBER=your-project-number
-GOOGLE_CLOUD_LOCATION=us-central1
-
-# Hosting Agent ID (after agent deployment)
-AGENT_ENGINE_ID=your-hosting-agent-id
-```
-
-### Step 3: Install Dependencies
-
-```bash
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install project dependencies
-uv sync
-```
-
-### Step 4: Test Configuration
-
-```bash
-# Test that configuration loads correctly
-cd tests
-python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(f'LOCATION: {LOCATION}')"
-```
-
----
-
 ## CI/CD Setup with Google Cloud Build V2
 ![cicd_pipeline](assets/google_cloudbuild.jpeg)
+You will need create a GitHub repository and push this repository to GitHub.
+
 You have two options for setting up CI/CD:
 
 ### Option 1: Quick Setup with agent-starter-pack (Recommended)
@@ -709,7 +661,115 @@ echo "$(gcloud run services describe cocktail-mcp-ge-staging --region ${_REGION}
 
 ---
 
-## Local Testing
+## Local Development & Testing Setup
+
+### Understanding Environment Variables
+
+This project uses environment variables in multiple locations:
+
+1. **Local Testing**: `src/a2a_agents/.env` and `src/frontend/.env`
+2. **Deployment**: `.env.deploy` (for manual deployments)
+3. **CI/CD**: Terraform variables → Cloud Build substitutions
+4. **Tests**: `tests/test_config.py` (loads from `.env.deploy`)
+
+### Step 1: Get Your GCP Information
+
+Before configuring, gather this information:
+
+```bash
+# Get your project IDs
+gcloud projects list
+
+# Get project numbers (needed for agents)
+gcloud projects describe YOUR_STAGING_PROJECT_ID --format="value(projectNumber)"
+gcloud projects describe YOUR_PROD_PROJECT_ID --format="value(projectNumber)"
+
+# Note your region (typically us-central1)
+REGION="us-central1"
+```
+
+### Step 2: Configure Local Environment Variables
+
+#### Option A: Copy Example Files
+
+```bash
+# Copy environment templates
+cp .env.example .env.deploy
+cp src/a2a_agents/.env.example src/a2a_agents/.env
+cp src/frontend/.env.example src/frontend/.env
+```
+
+#### Option B: Create from Scratch
+
+**Create `.env.deploy`:**
+
+```bash
+# Deployment environment variables
+PROJECT_ID=your-staging-project-id
+GOOGLE_CLOUD_REGION=us-central1
+APP_SERVICE_ACCOUNT=a2a-multiagent-ge-cicd-app@your-staging-project-id.iam.gserviceaccount.com
+DISPLAY_NAME_SUFFIX=Staging
+BUCKET_NAME=your-staging-project-id-bucket
+
+# MCP Server URLs (will be set after MCP servers are deployed)
+# IMPORTANT: Include /mcp/ with trailing slash
+CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
+WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
+```
+
+**Create `src/a2a_agents/.env`:**
+
+```bash
+# Vertex AI Configuration
+GOOGLE_GENAI_USE_VERTEXAI=True
+GOOGLE_CLOUD_PROJECT=your-staging-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Project Configuration
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+
+# MCP Server URLs (after deployment)
+# IMPORTANT: Include /mcp/ with trailing slash
+CT_MCP_SERVER_URL=https://your-cocktail-mcp-url/mcp/
+WEA_MCP_SERVER_URL=https://your-weather-mcp-url/mcp/
+
+# Agent URLs (after agent deployment)
+CT_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/COCKTAIL_AGENT_ID/a2a
+WEA_AGENT_URL=https://us-central1-aiplatform.googleapis.com/v1beta1/projects/PROJECT_NUMBER/locations/us-central1/reasoningEngines/WEATHER_AGENT_ID/a2a
+```
+
+**Create `src/frontend/.env`:**
+
+```bash
+# Frontend Configuration
+PROJECT_ID=your-staging-project-id
+PROJECT_NUMBER=your-project-number
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Hosting Agent ID (after agent deployment)
+AGENT_ENGINE_ID=your-hosting-agent-id
+```
+
+### Step 3: Install Dependencies
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install project dependencies
+uv sync
+```
+
+### Step 4: Test Configuration
+
+```bash
+# Test that configuration loads correctly
+cd tests
+python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(f'LOCATION: {LOCATION}')"
+```
+
+
 
 ### Testing Individual Components
 
