@@ -45,9 +45,12 @@ locals {
 # Create Gemini Enterprise Authorization
 module "gemini_enterprise_oauth" {
   # We will iterate over the staging environment only
-  # Only create if the oauth secrets are provided
-  for_each = var.oauth_client_id_secret_name != "" ? local.deploy_project_ids : {}
-  source   = "./modules/gemini_enterprise_oauth"
+  # Only create if the oauth secrets are provided AND the GE App ID is provided for the environment
+  for_each = var.oauth_client_id_secret_name != "" ? {
+    for k, v in local.deploy_project_ids : k => v
+    if(k == "staging" && var.ge_app_staging != "") || (k == "prod" && var.ge_app_prod != "")
+  } : {}
+  source = "./modules/gemini_enterprise_oauth"
 
   project_id               = each.value
   gemini_enterprise_region = var.agents_region
@@ -65,9 +68,12 @@ module "gemini_enterprise_agent_engine_register" {
     module.gemini_enterprise_oauth
   ]
   # We will iterate over the staging environment only
-  # Only create if the oauth secrets are provided
-  for_each = var.oauth_client_id_secret_name != "" ? local.deploy_project_ids : {}
-  source   = "./modules/gemini_enterprise_agent_engine_register"
+  # Only create if the oauth secrets are provided AND the GE App ID is provided for the environment
+  for_each = var.oauth_client_id_secret_name != "" ? {
+    for k, v in local.deploy_project_ids : k => v
+    if(k == "staging" && var.ge_app_staging != "") || (k == "prod" && var.ge_app_prod != "")
+  } : {}
+  source = "./modules/gemini_enterprise_agent_engine_register"
 
   project_id               = each.value
   agent_engine_region      = var.region

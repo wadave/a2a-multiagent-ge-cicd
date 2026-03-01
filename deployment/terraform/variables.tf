@@ -171,13 +171,13 @@ variable "auth_id_prod" {
 variable "oauth_client_id_secret_name" {
   type        = string
   description = "Name of the secret in Secret Manager containing the OAuth Client ID."
-  default     = "client_secret"
+  default     = ""
 }
 
 variable "oauth_client_secret_secret_name" {
   type        = string
   description = "Name of the secret in Secret Manager containing the OAuth Client Secret."
-  default     = "client_secret"
+  default     = ""
 }
 
 variable "agents_region" {
