@@ -90,6 +90,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     _LOGS_BUCKET_NAME_STAGING    = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].name
     _APP_SERVICE_ACCOUNT_STAGING = google_service_account.app_sa["staging"].email
     _REGION                      = var.region
+    _GE_APP_STAGING              = var.ge_app_staging
   }
   depends_on = [
     resource.google_project_service.cicd_services,

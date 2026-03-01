@@ -11,7 +11,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/cocktail-mcp:${COMMIT_SHA}"
 
         echo "Building and deploying Cocktail MCP Server..."
-        docker build -t $$IMAGE ./src/mcp_servers/cocktail_mcp_server
+        docker build -t $$IMAGE /workspace/src/mcp_servers/cocktail_mcp_server
         docker push $$IMAGE
         gcloud run deploy cocktail-mcp-ge-staging \
           --image $$IMAGE \
@@ -32,7 +32,7 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/a2a-multiagent-ge-cicd/weather-mcp:${COMMIT_SHA}"
 
         echo "Building and deploying Weather MCP Server..."
-        docker build -t $$IMAGE ./src/mcp_servers/weather_mcp_server
+        docker build -t $$IMAGE /workspace/src/mcp_servers/weather_mcp_server
         docker push $$IMAGE
         gcloud run deploy weather-mcp-ge-staging \
           --image $$IMAGE \
@@ -140,7 +140,7 @@ steps:
         echo "Extracted AGENT_ENGINE_ID: $$AGENT_ENGINE_ID"
 
         echo "Building and deploying Frontend with latest code..."
-        docker build -t $$IMAGE ./src/frontend
+        docker build -t $$IMAGE /workspace/src/frontend
         docker push $$IMAGE
         gcloud run deploy a2a-frontend-ge2 \
           --image $$IMAGE \
@@ -177,6 +177,9 @@ steps:
       - 'TF_VAR_cicd_runner_project_id=${PROJECT_ID}'
       - 'TF_VAR_repository_owner=placeholder'
       - 'TF_VAR_repository_name=placeholder'
+      - 'TF_VAR_oauth_client_id_secret_name=client_secret'
+      - 'TF_VAR_oauth_client_secret_secret_name=client_secret'
+      - 'TF_VAR_ge_app_staging=${_GE_APP_STAGING}'
     waitFor: ['deploy-frontend']
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here
@@ -186,6 +189,7 @@ substitutions:
   _PROJECT_NUMBER: ''
   _REGION: ''
   _APP_SERVICE_ACCOUNT_STAGING: ''
+  _GE_APP_STAGING: ''
 
 logsBucket: gs://${PROJECT_ID}-a2a-multiagent-ge-cicd-logs/build-logs
 options:
