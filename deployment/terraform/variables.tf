@@ -69,12 +69,16 @@ variable "cicd_roles" {
   type        = list(string)
   default = [
     "roles/storage.admin",
+    "roles/aiplatform.admin",
     "roles/aiplatform.user",
+    "roles/discoveryengine.admin",
     "roles/discoveryengine.editor",
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/artifactregistry.writer",
-    "roles/cloudbuild.builds.builder"
+    "roles/cloudbuild.builds.builder",
+    "roles/serviceusage.serviceUsageAdmin",
+    "roles/run.admin"
   ]
 }
 
@@ -83,13 +87,15 @@ variable "cicd_sa_deployment_required_roles" {
   type        = list(string)
   default = [
     "roles/iam.serviceAccountUser",
+    "roles/aiplatform.admin",
     "roles/aiplatform.user",
     "roles/storage.admin",
     "roles/secretmanager.secretAccessor",
     "roles/secretmanager.viewer",
     "roles/serviceusage.serviceUsageAdmin",
     "roles/serviceusage.serviceUsageConsumer",
-    "roles/resourcemanager.projectIamAdmin"
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/run.admin"
   ]
 }
 
