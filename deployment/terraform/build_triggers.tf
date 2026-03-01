@@ -120,8 +120,8 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   substitutions = {
     _PROD_PROJECT_ID          = var.prod_project_id
     _PROJECT_NUMBER           = var.prod_project_id != "" ? data.google_project.prod[0].number : ""
-    _LOGS_BUCKET_NAME_PROD    = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name
-    _APP_SERVICE_ACCOUNT_PROD = google_service_account.app_sa["prod"].email
+    _LOGS_BUCKET_NAME_PROD    = try(resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name, "")
+    _APP_SERVICE_ACCOUNT_PROD = try(google_service_account.app_sa["prod"].email, "")
     _REGION                   = var.region
     _GE_APP                   = var.ge_app_prod
     _AUTH_ID                  = var.auth_id_prod

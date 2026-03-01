@@ -167,7 +167,9 @@ steps:
 
         cd deployment/terraform
         terraform init
-        terraform apply -auto-approve -target='google_project_iam_member.other_projects_roles'
+        terraform apply -auto-approve -target='google_project_iam_member.other_projects_roles' \
+          -target='google_project_iam_member.github_runner_modelarmor_admin' \
+          -target='google_project_iam_member.github_runner_serviceusage_consumer'
         terraform apply -auto-approve \
           -target='module.gemini_enterprise_oauth["staging"]' \
           -target='module.gemini_enterprise_agent_engine_register["staging"]'
