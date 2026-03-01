@@ -38,8 +38,10 @@ locals {
   ]
 
   deploy_project_ids = {
-    staging = var.staging_project_id
-    prod    = var.prod_project_id
+    for k, v in {
+      staging = var.staging_project_id
+      prod    = var.prod_project_id
+    } : k => v if v != ""
   }
 
   all_project_ids = [
