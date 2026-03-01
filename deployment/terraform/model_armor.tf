@@ -39,6 +39,16 @@ resource "null_resource" "model_armor_floor_settings" {
   }
 
   depends_on = [
-    google_project_service.modelarmor_api
+    google_project_service.modelarmor_api,
+    time_sleep.wait_for_iam_propagation
+  ]
+}
+
+resource "time_sleep" "wait_for_iam_propagation" {
+  create_duration = "30s"
+
+  depends_on = [
+    google_project_iam_member.github_runner_modelarmor_admin,
+    google_project_iam_member.github_runner_serviceusage_consumer
   ]
 }

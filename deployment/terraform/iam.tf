@@ -112,3 +112,13 @@ resource "google_project_iam_member" "github_runner_modelarmor_admin" {
   role    = "roles/modelarmor.admin"
   member  = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
 }
+
+# Grant the CI/CD service account Service Usage Consumer
+# Required for quota project determination via WIF when enabling floor settings
+resource "google_project_iam_member" "github_runner_serviceusage_consumer" {
+  for_each = toset(values(local.deploy_project_ids))
+
+  project = each.value
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
+}
