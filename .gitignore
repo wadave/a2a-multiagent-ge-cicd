@@ -385,7 +385,7 @@ cython_debug/
 # ==========================
 *.tfstate
 *.tfstate.*
-# *.tfvars
+*.tfvars
 .terraform*
 .terraform/
 vars/
