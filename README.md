@@ -1068,11 +1068,14 @@ gcloud projects get-iam-policy YOUR_CICD_PROJECT_ID \
   --filter="bindings.members:serviceAccount:a2a-multiagent-ge-cicd-cb@*"
 ```
 
-Re-apply Terraform if permissions are missing:
+Re-apply Terraform if permissions are missing (make sure to include the required targets):
 
 ```bash
 cd deployment/terraform
-terraform apply
+terraform apply \
+  -target='google_project_iam_member.other_projects_roles' \
+  -target='google_project_iam_member.github_runner_modelarmor_admin' \
+  -target='google_project_iam_member.github_runner_serviceusage_consumer'
 ```
 
 ### Debugging Tips
