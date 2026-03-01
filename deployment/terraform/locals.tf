@@ -62,8 +62,8 @@ locals {
     }
     hosting = {
       display_name_suffix = "Hosting Agent"
-      entrypoint_module   = "a2a_agents.hosting_agent.agent_executor"
-      entrypoint_object   = "HostingAgentExecutor"
+      entrypoint_module   = "a2a_agents.hosting_agent.adk_agent"
+      entrypoint_object   = "agent"
     }
   }
 
