@@ -78,6 +78,22 @@ resource "google_service_account_iam_member" "cicd_run_invoker_account_user" {
   depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
+# Allow the Cloud Build Service Agent to impersonate the CICD SA for V2 trigger execution
+resource "google_service_account_iam_member" "cloudbuild_p4sa_impersonate_cicd" {
+  service_account_id = google_service_account.cicd_runner_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:service-${data.google_project.cicd_project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+  depends_on         = [resource.google_project_service.cicd_services]
+}
+
+# Allow the Legacy Cloud Build Service Account to impersonate the CICD SA for V1 trigger execution
+resource "google_service_account_iam_member" "cloudbuild_legacy_impersonate_cicd" {
+  service_account_id = google_service_account.cicd_runner_sa.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${data.google_project.cicd_project.number}@cloudbuild.gserviceaccount.com"
+  depends_on         = [resource.google_project_service.cicd_services]
+}
+
 # Allow CICD SA to impersonate app service accounts for deployment
 resource "google_service_account_iam_member" "cicd_impersonate_app_sa" {
   for_each = local.deploy_project_ids
