@@ -13,14 +13,14 @@
 # limitations under the License.
 
 resource "google_project_service" "modelarmor_api" {
-  for_each           = local.deploy_project_ids
+  for_each           = toset(values(local.deploy_project_ids))
   project            = each.value
   service            = "modelarmor.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "null_resource" "model_armor_floor_settings" {
-  for_each = local.deploy_project_ids
+  for_each = toset(values(local.deploy_project_ids))
 
   provisioner "local-exec" {
     command = <<EOT

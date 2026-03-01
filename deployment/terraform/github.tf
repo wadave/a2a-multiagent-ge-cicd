@@ -78,6 +78,11 @@ resource "google_cloudbuildv2_connection" "github_connection" {
       oauth_token_secret_version = "${data.google_secret_manager_secret.github_pat[0].id}/versions/latest"
     }
   }
+
+  lifecycle {
+    ignore_changes = [github_config[0].app_installation_id]
+  }
+
   depends_on = [
     resource.google_project_service.cicd_services,
     resource.google_project_service.deploy_project_services,
