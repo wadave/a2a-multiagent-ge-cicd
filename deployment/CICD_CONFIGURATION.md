@@ -47,10 +47,6 @@ staging_project_id     = "your-staging-project"
 prod_project_id        = "your-prod-project"
 cicd_runner_project_id = "your-cicd-project"
 
-# Project Numbers (NOT IDs)
-staging_project_number = "123456789012"
-prod_project_number    = "234567890123"
-
 # Region
 region = "us-central1"
 
@@ -63,7 +59,7 @@ repository_name  = "your-repo"
 
 **deployment/terraform/variables.tf** defines all variables:
 - `staging_project_id` / `prod_project_id` - GCP project IDs
-- `staging_project_number` / `prod_project_number` - GCP project numbers
+- `staging_project_number` / `prod_project_number` - GCP project numbers (DEPRECATED - Auto-fetched from project ID)
 - `region` - Deployment region
 - `repository_owner` / `repository_name` - GitHub configuration
 - Service account roles and permissions
@@ -77,21 +73,24 @@ repository_name  = "your-repo"
 ```hcl
 substitutions = {
   _STAGING_PROJECT_ID          = var.staging_project_id
-  _PROJECT_NUMBER              = var.staging_project_number
+  _PROJECT_NUMBER              = data.google_project.staging.number
+  _LOGS_BUCKET_NAME_STAGING    = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].name
   _APP_SERVICE_ACCOUNT_STAGING = google_service_account.app_sa["staging"].email
   _REGION                      = var.region
+  _GE_APP_STAGING              = var.ge_app_staging
 }
 ```
 
 **Production Trigger:**
 ```hcl
 substitutions = {
-  _PROD_PROJECT_ID            = var.prod_project_id
-  _PROJECT_NUMBER             = var.prod_project_number
-  _APP_SERVICE_ACCOUNT_PROD   = google_service_account.app_sa["prod"].email
-  _REGION                     = var.region
-  _ge_app                     = var.ge_app_prod      # Optional
-  _AUTH_ID                    = var.auth_id_prod     # Optional
+  _PROD_PROJECT_ID          = var.prod_project_id
+  _PROJECT_NUMBER           = var.prod_project_id != "" ? data.google_project.prod[0].number : ""
+  _LOGS_BUCKET_NAME_PROD    = try(resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name, "")
+  _APP_SERVICE_ACCOUNT_PROD = try(google_service_account.app_sa["prod"].email, "")
+  _REGION                   = var.region
+  _GE_APP                   = var.ge_app_prod      # Optional
+  _AUTH_ID                  = var.auth_id_prod     # Optional
 }
 ```
 
@@ -139,6 +138,7 @@ Same structure as staging, but:
 - Uses `_PROD_PROJECT_ID` instead of `_STAGING_PROJECT_ID`
 - Uses `_APP_SERVICE_ACCOUNT_PROD`
 - Sets `DISPLAY_NAME_SUFFIX="Prod"`
+- Uses `a2a-frontend-ge2-prod` name for frontend
 - Optional: Registers agent to Gemini Enterprise if `_GE_APP` and `_AUTH_ID` are set
 
 ## Deployment Script
@@ -191,11 +191,14 @@ This ensures:
 |----------|--------|-------------|
 | `_STAGING_PROJECT_ID` | `var.staging_project_id` | Staging GCP project ID |
 | `_PROD_PROJECT_ID` | `var.prod_project_id` | Production GCP project ID |
-| `_PROJECT_NUMBER` | `var.staging_project_number` or `var.prod_project_number` | GCP project number |
+| `_PROJECT_NUMBER` | `data.google_project.*.number` | GCP project number (auto-fetched) |
+| `_LOGS_BUCKET_NAME_STAGING` | `google_storage_bucket...name` | Staging logs bucket |
+| `_LOGS_BUCKET_NAME_PROD` | `google_storage_bucket...name` | Production logs bucket |
 | `_REGION` | `var.region` | Deployment region |
 | `_APP_SERVICE_ACCOUNT_STAGING` | `google_service_account.app_sa["staging"].email` | Staging service account |
 | `_APP_SERVICE_ACCOUNT_PROD` | `google_service_account.app_sa["prod"].email` | Production service account |
-| `_GE_APP` | `var.ge_app_prod` | Optional: Gemini Enterprise App ID |
+| `_GE_APP_STAGING` | `var.ge_app_staging` | Optional: Gemini Enterprise App ID (Staging) |
+| `_GE_APP` | `var.ge_app_prod` | Optional: Gemini Enterprise App ID (Production) |
 | `_AUTH_ID` | `var.auth_id_prod` | Optional: OAuth Client ID |
 
 ### Runtime Environment Variables (in deploy step)
@@ -221,15 +224,7 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your values
 ```
 
-### 2. Get Project Numbers
-
-```bash
-# Get project numbers (NOT IDs)
-gcloud projects describe YOUR_STAGING_PROJECT_ID --format="value(projectNumber)"
-gcloud projects describe YOUR_PROD_PROJECT_ID --format="value(projectNumber)"
-```
-
-### 3. Apply Terraform
+### 2. Apply Terraform
 
 ```bash
 terraform init
@@ -237,7 +232,7 @@ terraform plan
 terraform apply
 ```
 
-### 4. Verify Build Triggers
+### 3. Verify Build Triggers
 
 ```bash
 gcloud builds triggers list --project=YOUR_CICD_PROJECT_ID
