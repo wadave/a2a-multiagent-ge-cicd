@@ -55,7 +55,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.5" },
-    { name = "a2a-sdk", marker = "extra == 'vertex-deploy'", specifier = ">=0.3.4" },
+    { name = "a2a-sdk", marker = "extra == 'vertex-deploy'", specifier = "~=0.3.4" },
     { name = "click", specifier = ">=8.2.1" },
     { name = "cloudpickle", marker = "extra == 'vertex-deploy'", specifier = ">=3.1.1" },
     { name = "google-adk", specifier = ">=1.14.1" },
@@ -64,9 +64,9 @@ requires-dist = [
     { name = "google-auth-oauthlib", specifier = ">=1.2.2" },
     { name = "google-auth-oauthlib", marker = "extra == 'vertex-deploy'", specifier = ">=1.2.2" },
     { name = "google-cloud-aiplatform", extras = ["agent-engines"], specifier = ">=1.113.0" },
-    { name = "google-cloud-aiplatform", extras = ["agent-engines", "adk"], marker = "extra == 'vertex-deploy'", specifier = ">=1.112.0" },
+    { name = "google-cloud-aiplatform", extras = ["agent-engines", "adk"], marker = "extra == 'vertex-deploy'", specifier = "~=1.139.0" },
     { name = "google-genai", specifier = ">=1.36.0" },
-    { name = "google-genai", marker = "extra == 'vertex-deploy'", specifier = ">=1.36.0" },
+    { name = "google-genai", marker = "extra == 'vertex-deploy'", specifier = "~=1.65.0" },
     { name = "gradio", specifier = ">=5.46.1" },
     { name = "ipykernel", specifier = ">=6.30.1" },
     { name = "nbqa", specifier = ">=1.9.1" },
@@ -965,7 +965,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.137.0"
+version = "1.139.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -981,9 +981,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/76/0da98f663f5c58239900fa8f99488d01439b1ca7846c9667217a3aee20b1/google_cloud_aiplatform-1.137.0.tar.gz", hash = "sha256:76e66e2c3879936e51039d8bbd82581451510b4c7a840a588daaecee893d7d1e", size = 9947045, upload-time = "2026-02-11T16:23:18.435Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/40/6767bd4d694354fd55842990da66f7b6ccfdce283d10f65d4a82d9a8e8df/google_cloud_aiplatform-1.139.0.tar.gz", hash = "sha256:cfaa95375bfb79a97b8c949c3ec1600505a4a9c08ca2b01c36ed659a5e05e37c", size = 9964138, upload-time = "2026-02-25T00:51:06.976Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/b5/795c410120cb350058b9328f051b57a49a897514ba1bc65677ade0f6c1be/google_cloud_aiplatform-1.137.0-py2.py3-none-any.whl", hash = "sha256:e99dd235c237cbbeb0e73b0fc4b1ca9588b4144ac243a6242b2005b339b40ce8", size = 8204286, upload-time = "2026-02-11T16:23:15.462Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/20/a8a77dfdbf2a8169a3cce2d4e9cfbbfc168454ddd435891e59908ea8bf33/google_cloud_aiplatform-1.139.0-py2.py3-none-any.whl", hash = "sha256:3190b255cf510bce9e4b1adc8162ab0b3f9eca48801657d7af058d8e1d5ad9d0", size = 8209776, upload-time = "2026-02-25T00:51:03.526Z" },
 ]
 
 [package.optional-dependencies]
@@ -1313,7 +1313,7 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "1.63.0"
+version = "1.65.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1327,9 +1327,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/d7/07ec5dadd0741f09e89f3ff5f0ce051ce2aa3a76797699d661dc88def077/google_genai-1.63.0.tar.gz", hash = "sha256:dc76cab810932df33cbec6c7ef3ce1538db5bef27aaf78df62ac38666c476294", size = 491970, upload-time = "2026-02-11T23:46:28.472Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/79/f9/cc1191c2540d6a4e24609a586c4ed45d2db57cfef47931c139ee70e5874a/google_genai-1.65.0.tar.gz", hash = "sha256:d470eb600af802d58a79c7f13342d9ea0d05d965007cae8f76c7adff3d7a4750", size = 497206, upload-time = "2026-02-26T00:20:33.824Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/c8/ba32159e553fab787708c612cf0c3a899dafe7aca81115d841766e3bfe69/google_genai-1.63.0-py3-none-any.whl", hash = "sha256:6206c13fc20f332703ca7375bea7c191c82f95d6781c29936c6982d86599b359", size = 724747, upload-time = "2026-02-11T23:46:26.697Z" },
+    { url = "https://files.pythonhosted.org/packages/68/3c/3fea4e7c91357c71782d7dcaad7a2577d636c90317e003386893c25bc62c/google_genai-1.65.0-py3-none-any.whl", hash = "sha256:68c025205856919bc03edb0155c11b4b833810b7ce17ad4b7a9eeba5158f6c44", size = 724429, upload-time = "2026-02-26T00:20:32.186Z" },
 ]
 
 [[package]]
