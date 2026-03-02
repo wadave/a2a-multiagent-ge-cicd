@@ -212,8 +212,8 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 )
 @click.option(
     "--requirements-file",
-    default="requirements.txt",
-    help="Path to requirements.txt file",
+    default=None,
+    help="Path to a requirements.txt file with agent runtime dependencies. Defaults to the vertex-deploy optional deps in src/a2a_agents/pyproject.toml when omitted.",
 )
 @click.option(
     "--set-env-vars",

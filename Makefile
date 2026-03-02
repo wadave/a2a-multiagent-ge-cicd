@@ -74,7 +74,7 @@ test-integration:
 # Run all tests (unit + integration)
 test:
 	uv sync --dev
-	uv run pytest tests/unit && uv run pytest tests/integration
+	uv run pytest tests/unit tests/integration
 
 # Run load tests
 test-load:

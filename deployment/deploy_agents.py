@@ -24,12 +24,12 @@ Environment variables:
     WEA_MCP_SERVER_URL: Weather MCP server URL
     DISPLAY_NAME_SUFFIX: Environment suffix (e.g., "Staging", "Prod")
     BUCKET_NAME: GCS bucket for staging (default: {PROJECT_ID}-bucket)
-    REQUIREMENTS_FILE: Path to requirements.txt (default: requirements.txt)
 """
 
 import logging
 import os
 import sys
+import tomllib
 
 # Add src to path so that a2a_agents are importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -50,15 +50,16 @@ from a2a_agents.weather_agent.weather_agent_executor import WeatherAgentExecutor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REQUIREMENTS = [
-    "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
-    "a2a-sdk >= 0.3.4",
-    "pydantic==2.11.9",
-    "cloudpickle==3.1.1",
-    "google-auth-oauthlib>=1.2.2",
-    "google-auth[openid]>=2.40.3",
-    "google-genai>=1.36.0",
-]
+_PYPROJECT_TOML = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "../src/a2a_agents/pyproject.toml"
+)
+
+
+def _load_deploy_requirements() -> list[str]:
+    """Load agent runtime requirements from pyproject.toml [project.optional-dependencies.vertex-deploy]."""
+    with open(_PYPROJECT_TOML, "rb") as f:
+        data = tomllib.load(f)
+    return data["project"]["optional-dependencies"]["vertex-deploy"]
 
 
 def list_existing_agents(client):
@@ -74,13 +75,13 @@ def list_existing_agents(client):
     return agents
 
 
-def _build_config(display_name, description, service_account, location, bucket_name, env_vars):
+def _build_config(display_name, description, service_account, location, bucket_name, env_vars, requirements):
     """Build the common deployment config dict."""
     return {
         "display_name": display_name,
         "description": description,
         "service_account": service_account,
-        "requirements": REQUIREMENTS,
+        "requirements": requirements,
         "http_options": {
             "base_url": f"https://{location}-aiplatform.googleapis.com",
             "api_version": "v1beta1",
@@ -100,7 +101,7 @@ def deploy_agent(
     location,
     service_account,
     bucket_name,
-    requirements_file,
+    requirements,
     extra_env_vars,
     existing_agents,
 ):
@@ -115,6 +116,7 @@ def deploy_agent(
     config = _build_config(
         display_name, a2a_agent.agent_card.description,
         service_account, location, bucket_name, env_vars,
+        requirements=requirements,
     )
 
     if display_name in existing_agents:
@@ -148,7 +150,7 @@ def deploy_adk_agent(
     location,
     service_account,
     bucket_name,
-    requirements_file,
+    requirements,
     extra_env_vars,
     existing_agents,
 ):
@@ -173,6 +175,7 @@ def deploy_adk_agent(
     config = _build_config(
         display_name, agent_engine.description,
         service_account, location, bucket_name, env_vars,
+        requirements=requirements,
     )
 
     if display_name in existing_agents:
@@ -210,7 +213,8 @@ def main():
     service_account = os.environ.get("APP_SERVICE_ACCOUNT")
     bucket_name = os.environ.get("BUCKET_NAME", f"{project_id}-bucket")
     display_name_suffix = os.environ.get("DISPLAY_NAME_SUFFIX", "Staging")
-    requirements_file = os.environ.get("REQUIREMENTS_FILE", "requirements.txt")
+    requirements = _load_deploy_requirements()
+    logger.info(f"Loaded {len(requirements)} agent runtime requirements from pyproject.toml")
 
     ct_mcp_url = os.environ.get("CT_MCP_SERVER_URL")
     wea_mcp_url = os.environ.get("WEA_MCP_SERVER_URL")
@@ -241,7 +245,7 @@ def main():
         location=location,
         service_account=service_account,
         bucket_name=bucket_name,
-        requirements_file=requirements_file,
+        requirements=requirements,
         extra_env_vars={
             "CT_MCP_SERVER_URL": ct_mcp_url,
             "CT_REMOTE_MCP_SERVER_NAME": "cocktail-remote-mcp-server",
@@ -259,7 +263,7 @@ def main():
         location=location,
         service_account=service_account,
         bucket_name=bucket_name,
-        requirements_file=requirements_file,
+        requirements=requirements,
         extra_env_vars={
             "WEA_MCP_SERVER_URL": wea_mcp_url,
             "WEATHER_REMOTE_MCP_SERVER_NAME": "weather-remote-mcp-server",
@@ -280,7 +284,7 @@ def main():
         location=location,
         service_account=service_account,
         bucket_name=bucket_name,
-        requirements_file=requirements_file,
+        requirements=requirements,
         extra_env_vars={
             "CT_AGENT_URL": ct_agent_url,
             "WEA_AGENT_URL": wea_agent_url,

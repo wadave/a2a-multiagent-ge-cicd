@@ -1,48 +1,52 @@
-# Example Terraform Variables File
-# Copy this file to terraform.tfvars and fill in your values
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit real values.
 
-# Required: Project Configuration
-prod_project_id     = "your-prod-project-id"
-staging_project_id  = "your-staging-project-id"
+# ----------------------------------------------------------------------------
+# Required: GCP Project IDs
+# ----------------------------------------------------------------------------
+
+# Project where Cloud Build pipelines run
 cicd_runner_project_id = "your-cicd-project-id"
 
-# Required: Project Numbers (NOT IDs)
-# Get project number: gcloud projects describe PROJECT_ID --format="value(projectNumber)"
-staging_project_number = "123456789012"
-prod_project_number    = "123456789013"
+# Project for staging resources (Cloud Run, Agent Engine, etc.)
+staging_project_id = "your-staging-project-id"
 
-# Required: Region for deployment
-region = "us-central1"
+# Project for production resources
+prod_project_id = "your-prod-project-id"
 
-# Required: GitHub Configuration
+# ----------------------------------------------------------------------------
+# Required: GitHub repository details
+# ----------------------------------------------------------------------------
+
 repository_owner = "your-github-username-or-org"
-repository_name  = "your-repo-name"
+repository_name  = "a2a-multiagent-ge-cicd"
 
-# GitHub Connection Configuration
-# Set create_cb_connection = true if you need to create a new Cloud Build connection
-create_cb_connection = false
-host_connection_name = "a2a-multiagent-ge-cicd-github-connection"
+# ----------------------------------------------------------------------------
+# Optional: Region (default: us-central1)
+# ----------------------------------------------------------------------------
 
-# If using GitHub App:
-# github_app_installation_id = "12345678"
+# region = "us-central1"
 
-# If using Personal Access Token:
-# github_pat_secret_id = "your-github-pat-secret"
+# ----------------------------------------------------------------------------
+# Optional: Cloud Build GitHub connection
+# Set create_cb_connection = true on first run to create the connection.
+# After it exists, set to false to avoid errors on re-apply.
+# ----------------------------------------------------------------------------
 
-# Optional: Gemini Enterprise Registration (for production)
-# Leave empty if not using Gemini Enterprise
-ge_app_prod                     = ""
-auth_id_prod                    = ""
-oauth_client_id_secret_name     = ""
-oauth_client_secret_secret_name = ""
+# create_cb_connection       = true
+# create_repository          = true
+# host_connection_name       = "a2a-multiagent-ge-cicd-github-connection"
+# github_app_installation_id = "123456789"
+# github_pat_secret_id       = "github-pat-secret"
 
-# Optional: Custom service account roles
-# Uncomment and modify if you need different permissions
-# app_sa_roles = [
-#   "roles/aiplatform.user",
-#   "roles/discoveryengine.editor",
-#   "roles/logging.logWriter",
-#   "roles/cloudtrace.agent",
-#   "roles/storage.admin",
-#   "roles/serviceusage.serviceUsageConsumer",
-# ]
+# ----------------------------------------------------------------------------
+# Optional: Gemini Enterprise registration
+# Leave empty to skip GE registration steps.
+# ----------------------------------------------------------------------------
+
+# ge_app_staging                  = "your-staging-ge-app-id"
+# ge_app_prod                     = "your-prod-ge-app-id"
+# auth_id_staging                 = "your-staging-oauth-client-id"
+# auth_id_prod                    = "your-prod-oauth-client-id"
+# oauth_client_id_secret_name     = "client-id-secret"
+# oauth_client_secret_secret_name = "client-secret-secret"

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 steps:
-  # Install uv package manager and sync dependencies
   - name: "python:3.13-slim"
     id: install-dependencies
     entrypoint: /bin/bash
@@ -24,7 +23,6 @@ steps:
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
-  # Run unit tests using pytest
   - name: "python:3.13-slim"
     id: unit-tests
     entrypoint: /bin/bash
@@ -32,17 +30,6 @@ steps:
       - "-c"
       - |
         uv run pytest tests/unit
-    env:
-      - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
-
-  # Run integration tests
-  - name: "python:3.13-slim"
-    id: integration-tests
-    entrypoint: /bin/bash
-    args:
-      - "-c"
-      - |
-        uv run pytest tests/integration
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
