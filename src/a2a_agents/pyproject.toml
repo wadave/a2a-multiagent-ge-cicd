@@ -29,8 +29,8 @@ dev = [
 vertex-deploy = [
     "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
     "a2a-sdk>=0.3.4",
-    "pydantic==2.11.9",
-    "cloudpickle==3.1.1",
+    "pydantic>=2.11.9",
+    "cloudpickle>=3.1.1",
     "google-auth-oauthlib>=1.2.2",
     "google-auth[openid]>=2.40.3",
     "google-genai>=1.36.0",
