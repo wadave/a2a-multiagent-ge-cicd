@@ -31,13 +31,14 @@ from a2a.types import (
     TextPart,
     TransportProtocol,
 )
-from a2a_agents.common.remote_connection import RemoteAgentConnections, TaskUpdateCallback
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
 from google.genai import types
+
+from a2a_agents.common.remote_connection import RemoteAgentConnections, TaskUpdateCallback
 
 # from google.adk.models.lite_llm import LiteLlm
 

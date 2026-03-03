@@ -16,14 +16,6 @@ import logging
 from typing import NoReturn
 
 import httpx
-from aiobreaker import CircuitBreaker, CircuitBreakerError
-from dotenv import load_dotenv
-from google.adk import Runner
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.sessions import InMemorySessionService
-from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
-from google.genai import types
 
 # A2A
 from a2a.server.agent_execution import AgentExecutor
@@ -32,11 +24,17 @@ from a2a.server.events.event_queue import EventQueue
 from a2a.server.tasks import TaskUpdater
 from a2a.types import (
     Role,
-    TaskState,
     TextPart,
     UnsupportedOperationError,
 )
 from a2a.utils.errors import ServerError
+from aiobreaker import CircuitBreaker, CircuitBreakerError
+from dotenv import load_dotenv
+from google.adk import Runner
+from google.adk.artifacts import InMemoryArtifactService
+from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
+from google.genai import types
 
 from a2a_agents.common.adk_orchestrator_agent import get_orchestrator_agent
 from a2a_agents.common.auth_utils import GoogleAuth
@@ -57,11 +55,13 @@ llm_api_breaker = CircuitBreaker(fail_max=3, timeout_duration=30)
 
 class CircuitBreakerTransport(httpx.AsyncBaseTransport):
     """Wraps an httpx transport to enforce an aiobreaker circuit breaker."""
+
     def __init__(self, underlying: httpx.AsyncBaseTransport):
         self._underlying = underlying
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         try:
+
             @llm_api_breaker
             async def _make_request():
                 response = await self._underlying.handle_async_request(request)
@@ -69,7 +69,7 @@ class CircuitBreakerTransport(httpx.AsyncBaseTransport):
                 if getattr(response, "status_code", 200) >= 500:
                     response.raise_for_status()
                 return response
-                
+
             return await _make_request()
         except CircuitBreakerError:
             logging.warning(f"Circuit Breaker OPEN. Fast-failing request to {request.url}")

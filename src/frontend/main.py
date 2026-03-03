@@ -15,7 +15,7 @@
 import asyncio
 import logging
 import os
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
 
 import gradio as gr
 import vertexai
@@ -53,9 +53,7 @@ if missing_vars:
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 # Connect to the deployed ADK hosting agent
-RESOURCE_NAME = (
-    f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{AGENT_ENGINE_ID}"
-)
+RESOURCE_NAME = f"projects/{PROJECT_NUMBER}/locations/{LOCATION}/reasoningEngines/{AGENT_ENGINE_ID}"
 logger.info(f"Connecting to agent: {RESOURCE_NAME}")
 try:
     remote_agent = agent_engines.get(RESOURCE_NAME)
@@ -67,7 +65,7 @@ except Exception as e:
 
 async def get_response_from_agent(
     query: str,
-    history: List[gr.ChatMessage],
+    history: list[gr.ChatMessage],
 ) -> AsyncIterator[gr.ChatMessage]:
     """Get response from host agent using the ADK agent_engines API."""
 
@@ -87,16 +85,26 @@ async def get_response_from_agent(
         ):
             logger.debug(f"Event: {event}")
             # Extract text from events — handle both dict and object formats
-            content = event.get("content", {}) if isinstance(event, dict) else getattr(event, "content", {})
+            content = (
+                event.get("content", {})
+                if isinstance(event, dict)
+                else getattr(event, "content", {})
+            )
             if content:
-                parts = content.get("parts", []) if isinstance(content, dict) else getattr(content, "parts", [])
+                parts = (
+                    content.get("parts", [])
+                    if isinstance(content, dict)
+                    else getattr(content, "parts", [])
+                )
                 for part in parts:
                     if isinstance(part, dict):
                         text = part.get("text")
                         has_fn = part.get("functionCall") or part.get("function_call")
                     else:
                         text = getattr(part, "text", None)
-                        has_fn = getattr(part, "function_call", None) or getattr(part, "functionCall", None)
+                        has_fn = getattr(part, "function_call", None) or getattr(
+                            part, "functionCall", None
+                        )
                     if text and not has_fn:
                         final_text = text
 

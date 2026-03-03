@@ -15,21 +15,22 @@
 
 import logging
 import os
-import httpx
-from dotenv import load_dotenv
 
+import httpx
 from a2a.client import ClientConfig, ClientFactory
 from a2a.types import TransportProtocol
+from dotenv import load_dotenv
+from google.adk.agents import LlmAgent
+from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
+from google.adk.models import Gemini
 from google.auth import default
 from google.auth.transport.requests import Request as req
-from google.adk.agents import LlmAgent
-from google.adk.models import Gemini
-from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
 from google.genai import types
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
 load_dotenv()
+
 
 class GoogleAuthRefresh(httpx.Auth):
     def __init__(self, scopes):
@@ -40,18 +41,18 @@ class GoogleAuthRefresh(httpx.Auth):
     def auth_flow(self, request):
         if not self.credentials.valid:
             self.credentials.refresh(self.transport_request)
-        
-        request.headers['Authorization'] = f'Bearer {self.credentials.token}'
+
+        request.headers["Authorization"] = f"Bearer {self.credentials.token}"
         yield request
 
 
 class MyClientFactory(ClientFactory):
     def create(self, card, consumers=None, interceptors=None):
         if not self._config.httpx_client:
-            self._config.httpx_client=httpx.AsyncClient(
+            self._config.httpx_client = httpx.AsyncClient(
                 timeout=120,
-                headers={'Content-Type': 'application/json'},
-                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                headers={"Content-Type": "application/json"},
+                auth=GoogleAuthRefresh(scopes=["https://www.googleapis.com/auth/cloud-platform"]),
             )
             self._register_defaults(self._config.supported_transports)
         return super().create(card, consumers, interceptors)
@@ -60,22 +61,24 @@ class MyClientFactory(ClientFactory):
 class MyRemoteA2aAgent(RemoteA2aAgent):
     async def _ensure_httpx_client(self) -> httpx.AsyncClient:
         if not self._httpx_client:
-            self._httpx_client=httpx.AsyncClient(
+            self._httpx_client = httpx.AsyncClient(
                 timeout=120,
-                headers={'Content-Type': 'application/json'},
-                auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform'])
+                headers={"Content-Type": "application/json"},
+                auth=GoogleAuthRefresh(scopes=["https://www.googleapis.com/auth/cloud-platform"]),
             )
         return self._httpx_client
 
 
 def create_hosting_agent() -> LlmAgent:
     """Creates the hosting agent with remote sub-agents."""
-    
+
     wea_agent_url = os.environ.get("WEA_AGENT_URL")
     ct_agent_url = os.environ.get("CT_AGENT_URL")
 
     if not wea_agent_url or not ct_agent_url:
-        logging.warning("WEA_AGENT_URL or CT_AGENT_URL not set. Hosting Agent may not work correctly.")
+        logging.warning(
+            "WEA_AGENT_URL or CT_AGENT_URL not set. Hosting Agent may not work correctly."
+        )
 
     client_factory = MyClientFactory(
         ClientConfig(
@@ -85,20 +88,20 @@ def create_hosting_agent() -> LlmAgent:
     )
 
     weather_agent_remoteA2a = MyRemoteA2aAgent(
-        name='weather_assistant',
-        description='''
+        name="weather_assistant",
+        description="""
         An agent that gathers the necessary information for weather information
-        ''',
-        agent_card=f'{wea_agent_url}/v1/card',
+        """,
+        agent_card=f"{wea_agent_url}/v1/card",
         a2a_client_factory=client_factory,
     )
 
     cocktail_agent_remoteA2a = MyRemoteA2aAgent(
-        name='cocktail_assistant',
-        description='''
+        name="cocktail_assistant",
+        description="""
         An agent that gathers the necessary information for cocktail information
-        ''',
-        agent_card=f'{ct_agent_url}/v1/card',
+        """,
+        agent_card=f"{ct_agent_url}/v1/card",
         a2a_client_factory=client_factory,
     )
 
@@ -124,16 +127,16 @@ def create_hosting_agent() -> LlmAgent:
             model="gemini-2.5-flash",
             retry_options=types.HttpRetryOptions(attempts=3),
         ),
-        name='host_agent',
+        name="host_agent",
         instruction=root_instruction,
         description=(
-            'This agent orchestrates the decomposition of the user request into'
-            ' tasks that can be performed by the child agents.'
+            "This agent orchestrates the decomposition of the user request into"
+            " tasks that can be performed by the child agents."
         ),
         sub_agents=[
             weather_agent_remoteA2a,
             cocktail_agent_remoteA2a,
         ],
     )
-    
+
     return root_agent

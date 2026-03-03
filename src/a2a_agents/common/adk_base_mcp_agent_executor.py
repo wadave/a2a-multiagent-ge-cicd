@@ -14,34 +14,34 @@
 # Author: Dave Wang
 import logging
 import time
-import httpx
 from abc import ABC, abstractmethod
-from typing import Dict, NoReturn
+from typing import NoReturn
 
+import httpx
 from a2a.server.agent_execution import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
 from a2a.server.tasks import TaskUpdater
-from a2a.types import Role, TaskState, TextPart, UnsupportedOperationError
+from a2a.types import Role, TextPart, UnsupportedOperationError
 from a2a.utils.errors import ServerError
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
 from google.adk.models import Gemini
+from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
 from google.adk.tools.mcp_tool.mcp_toolset import (
     McpToolset,
     StreamableHTTPConnectionParams,
 )
-from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport import requests as google_auth_requests
 from google.genai import types
 from google.oauth2 import id_token as google_id_token
+
 from a2a_agents.common.agent_configs import DEFAULT_MODEL
 
 
-def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
+def get_gcp_auth_headers(audience: str) -> dict[str, str]:
     """
     Fetches a Google Cloud OIDC token for a target audience using ADC.
 
@@ -67,9 +67,10 @@ def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
     except Exception as e:
         logging.warning(f"ADC fetch failed ({e}). Attempting GCP Metadata server fallback...")
         try:
-            # Fallback: Query the GCP Metadata server directly 
+            # Fallback: Query the GCP Metadata server directly
             # (Works inside Cloud Run / Reasoning Engine)
             import urllib.request
+
             url = f"http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience={audience}"
             req = urllib.request.Request(url, headers={"Metadata-Flavor": "Google"})
             with urllib.request.urlopen(req, timeout=5) as response:
@@ -79,7 +80,6 @@ def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
         except Exception as fallback_e:
             logging.error(f"Metadata fetch also failed: {fallback_e}")
             return {}
-
 
 
 class TokenManager:
@@ -99,7 +99,7 @@ class TokenManager:
         self._token = None
         self._expiry = None
 
-    def get_headers(self) -> Dict[str, str]:
+    def get_headers(self) -> dict[str, str]:
         """
         Get authorization headers with a fresh or cached token.
 
@@ -130,10 +130,10 @@ class TokenManager:
 
 class TokenManagerAuth(httpx.Auth):
     """An httpx.Auth implementation that dynamically attaches the latest OIDC token."""
-    
+
     def __init__(self, token_manager):
         self.token_manager = token_manager
-        
+
     def auth_flow(self, request: httpx.Request):
         # Always fetch the fresh header and apply it to the request
         headers = self.token_manager.get_headers()
@@ -160,7 +160,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
         self.token_manager = None
 
     @abstractmethod
-    def get_agent_config(self) -> Dict:
+    def get_agent_config(self) -> dict:
         """
         Return agent configuration dictionary.
 
@@ -192,6 +192,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Initialize token manager for automatic token refresh
             # Extract base URL for audience (Cloud Run OIDC tokens need base URL without path)
             from urllib.parse import urlparse
+
             parsed_url = urlparse(mcp_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             self.token_manager = TokenManager(audience=base_url)
@@ -204,8 +205,9 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Create a custom client factory that will attach our dynamic Auth object
             def custom_httpx_client_factory(**kwargs):
                 from mcp.client.streamable_http import create_mcp_http_client
+
                 # Override timeout to 120 seconds for MCP connections
-                kwargs['timeout'] = 120.0
+                kwargs["timeout"] = 120.0
                 # Get the default client with extended timeout
                 client = create_mcp_http_client(**kwargs)
                 # Ensure it uses our dynamic Auth handler for OIDC
@@ -217,7 +219,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 headers=mcp_auth_headers,
                 timeout=120.0,
                 sse_read_timeout=300.0,
-                httpx_client_factory=custom_httpx_client_factory
+                httpx_client_factory=custom_httpx_client_factory,
             )
 
             # Create the actual agent

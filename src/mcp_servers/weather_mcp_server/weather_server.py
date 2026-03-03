@@ -13,14 +13,14 @@
 # limitations under the License.
 # Author: Dave Wang
 
+import asyncio
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
-from geopy.exc import GeocoderServiceError, GeocoderTimedOut
-from geopy.geocoders import Nominatim
 import httpx
 from fastmcp import FastMCP
-import asyncio
+from geopy.exc import GeocoderServiceError, GeocoderTimedOut
+from geopy.geocoders import Nominatim
 
 # Initialize FastMCP server
 mcp = FastMCP("weather MCP server")
@@ -45,7 +45,7 @@ http_client = httpx.AsyncClient(
 geolocator = Nominatim(user_agent=USER_AGENT)
 
 
-async def get_weather_response(endpoint: str) -> Optional[Dict[str, Any]]:
+async def get_weather_response(endpoint: str) -> dict[str, Any] | None:
     """
     Make a request to the NWS API using the shared client with error handling.
     Returns None if an error occurs.
@@ -68,7 +68,7 @@ async def get_weather_response(endpoint: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def format_alert(feature: Dict[str, Any]) -> str:
+def format_alert(feature: dict[str, Any]) -> str:
     """Format an alert feature into a readable string."""
     props = feature.get("properties", {})  # Safer access
     # Use .get() with default values for robustness
@@ -85,7 +85,7 @@ def format_alert(feature: Dict[str, Any]) -> str:
             """
 
 
-def format_forecast_period(period: Dict[str, Any]) -> str:
+def format_forecast_period(period: dict[str, Any]) -> str:
     """Formats a single forecast period into a readable string."""
     return f"""
            {period.get("name", "Unknown Period")}:
@@ -200,12 +200,7 @@ async def get_forecast_by_city(city: str, state: str) -> str:
     # --- Input Validation ---
     if not city or not isinstance(city, str):
         return "Invalid city name provided."
-    if (
-        not state
-        or not isinstance(state, str)
-        or len(state) != 2
-        or not state.isalpha()
-    ):
+    if not state or not isinstance(state, str) or len(state) != 2 or not state.isalpha():
         return "Invalid state code. Please provide the two-letter US state abbreviation (e.g., CA)."
 
     city_name = city.strip()
@@ -216,9 +211,7 @@ async def get_forecast_by_city(city: str, state: str) -> str:
     location = None
     try:
         # Run the synchronous (blocking) geocode call in a separate thread
-        location = await asyncio.to_thread(
-            geolocator.geocode, query, timeout=GEOCODE_TIMEOUT
-        )
+        location = await asyncio.to_thread(geolocator.geocode, query, timeout=GEOCODE_TIMEOUT)
 
     except GeocoderTimedOut:
         return f"Could not get coordinates for '{city_name}, {state_code}': The location service timed out."

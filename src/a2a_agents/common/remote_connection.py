@@ -13,10 +13,7 @@
 # limitations under the License.
 # Author: Dave Wang
 import logging
-
 from collections.abc import Callable
-
-logger = logging.getLogger(__name__)
 
 from a2a.client import (
     Client,
@@ -31,6 +28,7 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 
+logger = logging.getLogger(__name__)
 
 TaskCallbackArg = Task | TaskStatusUpdateEvent | TaskArtifactUpdateEvent
 TaskUpdateCallback = Callable[[TaskCallbackArg, AgentCard], Task]
