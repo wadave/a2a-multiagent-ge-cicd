@@ -422,3 +422,5 @@ scratch
 
 # Configuration to ignore
 .pre-commit-config.yaml
+
+scratch/

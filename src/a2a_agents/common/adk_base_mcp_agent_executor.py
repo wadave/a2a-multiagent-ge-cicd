@@ -28,7 +28,8 @@ from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
+from google.adk.models import Gemini
 from google.adk.tools.mcp_tool.mcp_toolset import (
     McpToolset,
     StreamableHTTPConnectionParams,
@@ -220,7 +221,10 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             # Create the actual agent
             self.agent = LlmAgent(
-                model=config.get("model", "gemini-2.5-flash"),
+                model=Gemini(
+                    model=config.get("model", "gemini-2.5-flash"),
+                    retry_options=types.HttpRetryOptions(attempts=3),
+                ),
                 name=config["name"],
                 description=config["description"],
                 instruction=config["instruction"],
@@ -239,7 +243,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
                 # In-memory services for simplicity
                 # In production, you might use persistent storage
                 artifact_service=InMemoryArtifactService(),
-                session_service=InMemorySessionService(),
+                session_service=VertexAiSessionService(),
                 memory_service=InMemoryMemoryService(),
             )
 

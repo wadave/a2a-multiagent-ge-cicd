@@ -22,7 +22,7 @@ from google.adk import Runner
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService
-
+from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
 from google.genai import types
 
 # A2A
@@ -138,7 +138,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
                 # In-memory services for simplicity
                 # In production, you might use persistent storage
                 artifact_service=InMemoryArtifactService(),
-                session_service=InMemorySessionService(),
+                session_service=VertexAiSessionService(),
                 memory_service=InMemoryMemoryService(),
             )
 

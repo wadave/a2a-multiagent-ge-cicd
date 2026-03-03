@@ -23,7 +23,9 @@ from a2a.types import TransportProtocol
 from google.auth import default
 from google.auth.transport.requests import Request as req
 from google.adk.agents import LlmAgent
+from google.adk.models import Gemini
 from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
+from google.genai import types
 
 # Set logging
 logging.getLogger().setLevel(logging.INFO)
@@ -118,7 +120,10 @@ def create_hosting_agent() -> LlmAgent:
     """
 
     root_agent = LlmAgent(
-        model="gemini-2.5-flash",
+        model=Gemini(
+            model="gemini-2.5-flash",
+            retry_options=types.HttpRetryOptions(attempts=3),
+        ),
         name='host_agent',
         instruction=root_instruction,
         description=(
