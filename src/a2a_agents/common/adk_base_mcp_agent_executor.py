@@ -38,6 +38,7 @@ from google.auth import exceptions as google_auth_exceptions
 from google.auth.transport import requests as google_auth_requests
 from google.genai import types
 from google.oauth2 import id_token as google_id_token
+from a2a_agents.common.agent_configs import DEFAULT_MODEL
 
 
 def get_gcp_auth_headers(audience: str) -> Dict[str, str]:
@@ -222,7 +223,7 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
             # Create the actual agent
             self.agent = LlmAgent(
                 model=Gemini(
-                    model=config.get("model", "gemini-2.5-flash"),
+                    model=config.get("model", DEFAULT_MODEL),
                     retry_options=types.HttpRetryOptions(attempts=3),
                 ),
                 name=config["name"],
