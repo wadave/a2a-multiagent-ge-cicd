@@ -129,7 +129,7 @@ Agent Frameworks & Protocols: ADK (Agent Development Kit), A2A (Agent2Agent Prot
 
 Observability: Google Cloud Trace, Google Cloud Monitoring, Google Cloud Logging.
 
-Security & Resilience: Google Cloud Secret Manager, Model Armor (LLM Security), aiobreaker (HTTP Circuit Breaker).
+Security, Resilience & State: Google Cloud Secret Manager, Model Armor (LLM Security), aiobreaker (HTTP Circuit Breaker), Vertex AI Session Service, Gemini Resource Retries.
 
 External Data: TheCocktailDB API, National Weather Service API.
 

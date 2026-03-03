@@ -111,7 +111,9 @@
 
 ## 8. Observability, Performance, Scalability & Resilience
 - **Scalability**: Both Agent Engine and Cloud Run automatically scale horizontally based on incoming traffic.
-- **Resilience**: An HTTP Circuit Breaker pattern is implemented (using `aiobreaker`) on the shared asynchronous HTTP client. This ensures that if downstream MCP servers or external APIs experience outages, the system "fails fast" (returning HTTP 503) rather than hanging and consuming resources.
+- **Resilience**:
+  - **HTTP Circuit Breaker**: Implemented (using `aiobreaker`) on the shared asynchronous HTTP client. This ensures that if downstream MCP servers or external APIs experience outages, the system "fails fast" (returning HTTP 503) rather than hanging and consuming resources.
+  - **Gemini Resource Retries**: The `LlmAgent` automatically retries Gemini model invocations (up to 3 attempts) for transient failures, enhancing robustness for LLM interactions.
 - **Deep Observability (Telemetry)**:
   - **Cloud Logging**: Captures step-by-step agent thought processes, action selections, and runtime errors.
   - **Cloud Trace**: Crucial for A2A multi-hop requests. Enables visualization of latency across Frontend -> Host Agent -> Sub-agent -> MCP Server -> External API.
@@ -153,6 +155,7 @@ This section documents the mechanisms for managing the agent's lifecycle, from c
 
 - **Prompt and Agent Configuration Management**:
   - **Centralized Logic**: Model selections, instructions, and environment-specific variables are defined in [agent_configs.py](file:///usr/local/google/home/wangdave/remote_ws/projects/a2a-multiagent-ge-cicd/src/a2a_agents/common/agent_configs.py).
+  - **State Management**: Utilizing `VertexAiSessionService` for fully managed, persistent conversational memory for orchestrated agents, replacing local in-memory storage.
   - **Secret Management**: Sensitive credentials (OAuth tokens, API keys) are strictly managed via Google Secret Manager, ensuring no leak into the source repository.
 - **Experiment Tracking (Evaluation)**:
   - **Mechanism**: A dedicated evaluation suite in [tests/eval/](file:///usr/local/google/home/wangdave/remote_ws/projects/a2a-multiagent-ge-cicd/tests/eval/) supports rubric-based scoring.
@@ -183,3 +186,4 @@ This section details the framework for ensuring data integrity, regional complia
   - [v1.0.0, Current Date, Initial Architecture Design]
   - [v1.0.1, 2026-02-27, Added AI Lifecycle Management section]
   - [v1.0.2, 2026-02-27, Added Compliance and Governance section]
+  - [v1.0.3, 2026-03-03, Added Gemini retry options and Vertex AI Session Services]
