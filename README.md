@@ -266,12 +266,13 @@ The agents interact with the following MCP servers:
 │       ├── backend.tf            #   Terraform state backend (GCS)
 │       ├── build_triggers.tf     #   Cloud Build triggers
 │       ├── frontend.tf           #   Frontend Cloud Run service
+│       ├── gemini_enterprise.tf  #   Registers Agent Engine to Gemini Enterprise
 │       ├── github.tf             #   GitHub connection + repository
 │       ├── iam.tf                #   IAM role assignments
 │       ├── locals.tf             #   Agent definitions, service lists
 │       ├── mcp_iam.tf            #   MCP server IAM permissions
 │       ├── providers.tf          #   Provider versions
-│       ├── service.tf            #   Agent Engine resources
+│       ├── service.tf            #   Agent Engine placeholder 
 │       ├── service_accounts.tf   #   Service accounts (CICD + app)
 │       ├── storage.tf            #   GCS buckets for logs
 │       ├── telemetry.tf          #   BigQuery telemetry
@@ -491,6 +492,7 @@ terraform apply
 | **Storage Buckets** | Logs and feedback data buckets per project |
 | **BigQuery** | Telemetry datasets with Cloud Logging sinks |
 | **MCP IAM** | Permissions for agents to invoke MCP services |
+| **Gemini Enterprise App** | Registers the Hosting Agent Engine to Gemini Enterprise |
 
 #### Step 5: Authorize GitHub Connection
 
@@ -778,12 +780,12 @@ python -c "from test_config import *; print(f'PROJECT_ID: {PROJECT_ID}'); print(
 ```bash
 # Test Cocktail MCP Server
 cd src/mcp_servers/cocktail_mcp_server
-uv run python main.py
+uv run python cocktail_server.py
 # Uses stdio transport
 
 # Test Weather MCP Server
 cd src/mcp_servers/weather_mcp_server
-uv run python main.py
+uv run python weather_server.py
 # Uses stdio transport
 ```
 
@@ -852,8 +854,8 @@ Test with queries:
 # From project root
 cd tests
 
-# Run all integration tests
-python run_all_tests.py
+# Run all tests using pytest
+pytest
 
 # Or run specific test suites
 python integration/test_deployed_agents.py

@@ -132,7 +132,7 @@
   - *Production Project*: Receives manual deployments.
 - **CI/CD Pipeline Configuration**:
   1. `pr_checks.yaml`: Triggered on PRs. Runs linting and `pytest`.
-  2. `staging.yaml`: Triggered on merge to `staging`. Deploys MCP servers, extracts URLs, deploys Agent Engine containers.
+  2. `staging.yaml`: Triggered on merge to `staging`. Deploys MCP servers, extracts URLs, deploys Agent Engines via Python SDK.
   3. `deploy-to-prod.yaml`: Manual trigger requiring approval.
 - **Infrastructure**: Configured natively via the `deployment/terraform/*` scripts.
 
