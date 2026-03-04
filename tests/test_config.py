@@ -36,6 +36,7 @@ Optional environment variables (with sensible defaults or derived values):
 """
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from multiple possible locations

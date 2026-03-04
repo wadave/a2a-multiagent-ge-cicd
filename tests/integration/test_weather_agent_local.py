@@ -5,8 +5,9 @@ import logging
 import os
 import subprocess
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any
 
 # Ensure src is in path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src")))
@@ -15,20 +16,19 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
 
-from test_config import WEA_MCP_SERVER_URL
-
 from starlette.requests import Request
+from test_config import WEA_MCP_SERVER_URL
 from vertexai.preview.reasoning_engines import A2aAgent
 
+import a2a_agents.common.adk_base_mcp_agent_executor as executor_module
 from a2a_agents.weather_agent.weather_agent_card import weather_agent_card
 from a2a_agents.weather_agent.weather_agent_executor import WeatherAgentExecutor
-import a2a_agents.common.adk_base_mcp_agent_executor as executor_module
 
 logging.basicConfig(level=logging.INFO)
 
 # --- Monkeypatch for Local Auth ---
 
-def mock_get_gcp_auth_headers(audience: str) -> Dict[str, str]:
+def mock_get_gcp_auth_headers(audience: str) -> dict[str, str]:
     """Mock that uses gcloud to get a token working for local user."""
     try:
         token = subprocess.check_output(
@@ -85,7 +85,7 @@ async def test_agent_locally():
 
     os.environ["WEA_MCP_SERVER_URL"] = mcp_url
 
-    print(f"\n--- Initializing A2aAgent (Weather) ---")
+    print("\n--- Initializing A2aAgent (Weather) ---")
     print(f"MCP URL: {mcp_url}")
     a2a_agent = A2aAgent(
         agent_card=weather_agent_card, agent_executor_builder=WeatherAgentExecutor

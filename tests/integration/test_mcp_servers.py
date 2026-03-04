@@ -1,18 +1,18 @@
 """Integration test for deployed MCP servers with authentication."""
 import asyncio
 import os
+import subprocess
 import sys
 from pathlib import Path
 
-import httpx
 import google.auth.transport.requests
-from google.oauth2 import id_token
+import httpx
 from fastmcp import Client
-import subprocess
+from google.oauth2 import id_token
 
 # Add tests directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from test_config import CT_MCP_BASE_URL, WEA_MCP_BASE_URL, CT_MCP_SERVER_URL, WEA_MCP_SERVER_URL
+from test_config import CT_MCP_BASE_URL, CT_MCP_SERVER_URL, WEA_MCP_BASE_URL, WEA_MCP_SERVER_URL
 
 
 class BearerAuth(httpx.Auth):

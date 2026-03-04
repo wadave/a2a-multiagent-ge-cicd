@@ -18,10 +18,8 @@ import argparse
 import asyncio
 import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Add the current directory to sys.path to ensure local imports work correctly
 sys.path.append(str(Path(__file__).parent))
@@ -41,19 +39,19 @@ logger = logging.getLogger(__name__)
 # The --use-llm flag enables LLM scoring using the Flex Tier (PayGo) as requested.
 
 
-def load_evalset(evalset_path: Path) -> Dict:
+def load_evalset(evalset_path: Path) -> dict:
     """Load an evaluation set."""
     with open(evalset_path) as f:
         return json.load(f)
 
 
-def load_eval_config(config_path: Path) -> Dict:
+def load_eval_config(config_path: Path) -> dict:
     """Load evaluation configuration."""
     with open(config_path) as f:
         return json.load(f)
 
 
-def calculate_rubric_score(example: Dict, response: str) -> Dict[str, float]:
+def calculate_rubric_score(example: dict, response: str) -> dict[str, float]:
     """Calculate rubric-based scores for a response.
 
     Args:
@@ -95,7 +93,7 @@ def calculate_rubric_score(example: Dict, response: str) -> Dict[str, float]:
     return scores
 
 
-async def evaluate_example(example: Dict, config: Dict, evaluator: Optional[LLMEvaluator] = None) -> Dict:
+async def evaluate_example(example: dict, config: dict, evaluator: LLMEvaluator | None = None) -> dict:
     """Evaluate a single example.
 
     Args:
@@ -128,7 +126,7 @@ async def evaluate_example(example: Dict, config: Dict, evaluator: Optional[LLME
         scores = await evaluator.score_response(result["input"], mock_response, rubrics)
     else:
         scores = calculate_rubric_score(example, mock_response)
-        
+
     result["scores"] = scores
 
     # Check against thresholds
@@ -201,7 +199,7 @@ def main():
 
     config = load_eval_config(config_path)
     evalset = load_evalset(evalset_path)
-    
+
     # Initialize LLM evaluator if requested
     evaluator = None
     if args.use_llm:
@@ -213,7 +211,7 @@ def main():
     # Run evaluation
     results = []
     examples = evalset.get("examples") or evalset.get("eval_cases", [])
-    
+
     logger.info(f"Running evaluation: {evalset.get('name', args.evalset)}")
     logger.info(f"Total examples: {len(examples)}")
 

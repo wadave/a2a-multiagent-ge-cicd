@@ -21,13 +21,12 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import List
 
 from locust import HttpUser, between, task
 
 # Add tests directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from test_config import PROJECT_NUMBER, LOCATION, HOSTING_AGENT_ID
+from test_config import HOSTING_AGENT_ID, LOCATION, PROJECT_NUMBER
 
 # Configure logging
 logging.basicConfig(
@@ -157,7 +156,6 @@ class HostingAgentUser(HttpUser):
                 if response.status_code == 200:
                     events = []
                     has_error = False
-                    response_data = {}
 
                     for line in response.iter_lines():
                         if line:
@@ -174,8 +172,6 @@ class HostingAgentUser(HttpUser):
                             try:
                                 event_data = json.loads(line_str)
                                 if isinstance(event_data, dict):
-                                    response_data = event_data
-
                                     # Check for errors
                                     if "code" in event_data and event_data["code"] >= 400:
                                         has_error = True

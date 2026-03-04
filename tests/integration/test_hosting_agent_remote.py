@@ -8,15 +8,14 @@ from pathlib import Path
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
 
+import httpx
 from test_config import (
-    HOSTING_AGENT_URL,
-    DEFAULT_TIMEOUT,
     DEFAULT_POLL_ATTEMPTS,
+    DEFAULT_TIMEOUT,
+    HOSTING_AGENT_URL,
     POLL_INTERVAL,
 )
-from test_utils import get_gcloud_token, print_test_summary
-
-import httpx
+from test_utils import get_gcloud_token
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

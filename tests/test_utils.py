@@ -16,7 +16,7 @@
 """Shared test utilities."""
 import asyncio
 import subprocess
-from typing import Optional
+
 import httpx
 
 
@@ -40,7 +40,7 @@ async def test_a2a_agent(
     timeout: float = 90.0,
     poll_attempts: int = 45,
     poll_interval: int = 2,
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """
     Test an A2A agent via the A2A protocol.
 
@@ -93,7 +93,7 @@ async def test_a2a_agent(
         task_resp = resp.json()
         task_id = task_resp.get("task", {}).get("id")
         if not task_id:
-            print(f"✗ No task ID in response")
+            print("✗ No task ID in response")
             return False, None
 
         print(f"✓ Task created: {task_id}")
@@ -136,7 +136,7 @@ async def test_a2a_agent(
                     return False, None
 
             elif state == "TASK_STATE_FAILED":
-                print(f"✗ Task failed")
+                print("✗ Task failed")
                 return False, None
 
             await asyncio.sleep(poll_interval)
@@ -151,7 +151,7 @@ async def test_adk_agent(
     project_id: str,
     location: str,
     user_id: str = "test_user",
-) -> tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """
     Test an ADK agent via the agent_engines API.
 
@@ -169,7 +169,7 @@ async def test_adk_agent(
     from vertexai import agent_engines
 
     print(f"\n{'='*80}")
-    print(f"Testing ADK Agent")
+    print("Testing ADK Agent")
     print(f"Resource: {agent_resource_name}")
     print(f"Query: {query}")
     print('='*80)

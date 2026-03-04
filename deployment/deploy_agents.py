@@ -42,6 +42,7 @@ from vertexai.preview.reasoning_engines import A2aAgent
 from a2a_agents.cocktail_agent.cocktail_agent_card import cocktail_agent_card
 from a2a_agents.cocktail_agent.cocktail_agent_executor import CocktailAgentExecutor
 from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
+
 # Note: HostingAgentExecutor and hosting_agent_card are NOT used
 # The hosting agent is deployed as an ADK agent via create_hosting_agent()
 from a2a_agents.weather_agent.weather_agent_card import weather_agent_card

@@ -16,7 +16,6 @@
 """Integration test for deployed frontend UI."""
 import asyncio
 import sys
-import os
 from pathlib import Path
 
 # Add tests directory to path

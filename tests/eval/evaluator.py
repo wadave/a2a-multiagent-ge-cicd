@@ -19,7 +19,6 @@ Recommended preview models for Flex: gemini-3-flash-preview, gemini-3.1-flash-im
 
 import json
 import logging
-from typing import Dict, List, Optional
 
 from google import genai
 from google.genai.types import HttpOptions
@@ -40,7 +39,7 @@ class LLMEvaluator:
         self.project_id = project_id
         self.location = location
         self.model_id = model_id
-        
+
         # Initialize client with Flex Tier options
         self.client = genai.Client(
             vertexai=True,
@@ -57,7 +56,7 @@ class LLMEvaluator:
         )
         logger.info(f"Initialized LLMEvaluator with model {model_id} in {location} using Flex Tier")
 
-    async def score_response(self, input_text: str, response_text: str, rubrics: List[Dict]) -> Dict[str, float]:
+    async def score_response(self, input_text: str, response_text: str, rubrics: list[dict]) -> dict[str, float]:
         """Score an agent response against multiple rubrics.
 
         Args:
@@ -69,16 +68,16 @@ class LLMEvaluator:
             Dictionary mapping rubricId to a float score (0.0 to 1.0)
         """
         rubric_descriptions = "\n".join([
-            f"- {r['rubricId']}: {r['rubricContent']['textProperty']}" 
+            f"- {r['rubricId']}: {r['rubricContent']['textProperty']}"
             for r in rubrics
         ])
 
         prompt = f"""
-        You are an expert evaluator of AI agent responses. 
+        You are an expert evaluator of AI agent responses.
         Evaluate the following agent response based on the provided user query and rubrics.
 
         User Query: {input_text}
-        
+
         Agent Response:
         ---
         {response_text}
@@ -102,19 +101,19 @@ class LLMEvaluator:
                     "response_mime_type": "application/json",
                 }
             )
-            
+
             if response.text:
                 scores = json.loads(response.text)
             else:
                 logger.error("LLM returned empty response text")
                 scores = {}
-            
+
             # Ensure all requested rubrics are present, default to 0.0 if missing
             results = {}
             for r in rubrics:
                 rid = r["rubricId"]
                 results[rid] = float(scores.get(rid, 0.0))
-            
+
             return results
 
         except Exception as e:

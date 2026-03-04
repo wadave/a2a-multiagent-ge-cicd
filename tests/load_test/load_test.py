@@ -25,7 +25,7 @@ from locust import HttpUser, between, task
 
 # Add tests directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from test_config import PROJECT_NUMBER, LOCATION, HOSTING_AGENT_ID
+from test_config import HOSTING_AGENT_ID, LOCATION, PROJECT_NUMBER
 
 # Configure logging
 logging.basicConfig(

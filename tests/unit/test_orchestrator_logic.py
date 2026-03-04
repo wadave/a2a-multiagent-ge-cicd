@@ -14,9 +14,10 @@
 """Unit tests for orchestrator agent logic."""
 
 import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 from a2a_agents.common.adk_orchestrator_agent import AdkOrchestratorAgent
 
@@ -60,7 +61,7 @@ class TestOrchestratorAgentRegistration:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
-        
+
         async def _create_orchestrator():
             return AdkOrchestratorAgent(
                 remote_agent_addresses=[],

@@ -13,17 +13,16 @@
 # limitations under the License.
 """Unit tests for agent cards."""
 
-import pytest
 from a2a.types import AgentCard, AgentSkill
+from a2a_agents.hosting_agent.hosting_agent_card import (
+    hosting_agent_card,
+    hosting_agent_skill,
+)
 
 # Import agent cards
 from a2a_agents.cocktail_agent.cocktail_agent_card import (
     cocktail_agent_card,
     cocktail_agent_skill,
-)
-from a2a_agents.hosting_agent.hosting_agent_card import (
-    hosting_agent_card,
-    hosting_agent_skill,
 )
 from a2a_agents.weather_agent.weather_agent_card import (
     weather_agent_card,

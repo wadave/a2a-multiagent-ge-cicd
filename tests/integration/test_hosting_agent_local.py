@@ -13,15 +13,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
 
-from test_config import CT_AGENT_URL, WEA_AGENT_URL
-
 from dotenv import load_dotenv
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+from test_config import CT_AGENT_URL, WEA_AGENT_URL
 
-from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 import a2a_agents.hosting_agent.adk_agent as adk_agent_module
+from a2a_agents.hosting_agent.adk_agent import create_hosting_agent
 
 logging.basicConfig(level=logging.INFO)
 

@@ -24,14 +24,14 @@ sys.path.insert(0, str(tests_dir))
 
 from test_config import (
     COCKTAIL_AGENT_ID,
-    WEATHER_AGENT_ID,
-    PROJECT_NUMBER,
-    LOCATION,
-    DEFAULT_TIMEOUT,
     DEFAULT_POLL_ATTEMPTS,
+    DEFAULT_TIMEOUT,
+    LOCATION,
     POLL_INTERVAL,
+    PROJECT_NUMBER,
+    WEATHER_AGENT_ID,
 )
-from test_utils import test_a2a_agent, print_test_summary
+from test_utils import print_test_summary, test_a2a_agent
 
 
 async def test_cocktail_agent():

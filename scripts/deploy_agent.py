@@ -388,11 +388,11 @@ def deploy_agent_engine_app(
 
     # For config, we either pass the object name or the class name to be instantiated
     if entrypoint_class:
-        # Currently the AgentEngineConfig expects an object, but if classes are supported 
+        # Currently the AgentEngineConfig expects an object, but if classes are supported
         # it might need adjustments. For now we pass the object name 'agent' as default
         # assuming the class instantiate logic is done externally, or we use a wrapper.
         pass
-    
+
     config = AgentEngineConfig(
         display_name=display_name,
         description=description,
