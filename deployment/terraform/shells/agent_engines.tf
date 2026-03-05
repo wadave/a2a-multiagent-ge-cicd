@@ -52,8 +52,11 @@ resource "google_vertex_ai_reasoning_engine" "app" {
       }
 
       python_spec {
-        entrypoint_module = each.value.entrypoint_module
-        entrypoint_object = each.value.entrypoint_object
+        # The true entrypoints are set by CI/CD via deploy_agents.py.
+        # This dummy entrypoint prevents Vertex AI from crashing on startup
+        # while reading the placeholder source_archive.
+        entrypoint_module = "main"
+        entrypoint_object = "dummy"
         version           = "3.12"
       }
     }
