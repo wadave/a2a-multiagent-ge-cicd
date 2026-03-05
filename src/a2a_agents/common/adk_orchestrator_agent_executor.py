@@ -114,6 +114,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         self.remote_agent_addresses = remote_agent_addresses
         self.agent = None
         self.runner = None
+        # Act as an LRU cache bounded to 10000 items to prevent memory leaks.
         self._context_to_session_id: dict[str, str] = {}
 
     async def _init_agent(self) -> None:
@@ -237,6 +238,10 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
                 )
                 if session:
                     logging.info(f"Resuming existing session for context {context_id} -> Vertex session {vertex_session_id}.")
+                    # Bump to end for LRU cache effect
+                    if context_id in self._context_to_session_id:
+                        val = self._context_to_session_id.pop(context_id)
+                        self._context_to_session_id[context_id] = val
                     return session
             except Exception as e:
                 logging.warning(f"Vertex session {vertex_session_id} not found or error occurred: {e}. Creating new one.")
@@ -247,6 +252,13 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             user_id="user",
         )
         self._context_to_session_id[context_id] = session.id
+
+        # Prevent unbounded memory growth (max 10000 sessions)
+        if len(self._context_to_session_id) > 10000:
+            oldest_key = next(iter(self._context_to_session_id))
+            if oldest_key != context_id:
+                del self._context_to_session_id[oldest_key]
+                
         return session
 
     def _extract_answer(self, event) -> str:

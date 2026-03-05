@@ -52,10 +52,7 @@ terraform-plan:
 terraform-apply:
 	cd deployment/terraform && terraform apply
 
-# Set up dev environment using Terraform
-setup-dev-env:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve
+
 
 # ==============================================================================
 # Testing & Code Quality
@@ -136,7 +133,7 @@ clean:
 	rm -rf dist/ build/ .ruff_cache/
 
 .PHONY: install install-dev run-cocktail-mcp run-weather-mcp run-frontend \
-	deploy-agents terraform-init terraform-plan terraform-apply setup-dev-env \
+	deploy-agents terraform-init terraform-plan terraform-apply \
 	test test-unit test-integration test-load lint lint-fix eval \
 	docker-build-cocktail-mcp docker-build-weather-mcp docker-build-frontend docker-build-all \
 	clean

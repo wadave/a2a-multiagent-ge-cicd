@@ -187,3 +187,4 @@ This section details the framework for ensuring data integrity, regional complia
   - [v1.0.1, 2026-02-27, Added AI Lifecycle Management section]
   - [v1.0.2, 2026-02-27, Added Compliance and Governance section]
   - [v1.0.3, 2026-03-03, Added Gemini retry options and Vertex AI Session Services]
+  - [v1.0.4, 2026-03-05, Fixed VertexAiSessionService session ID mapping in AdkBaseMcpAgentExecutor and AdkOrchestratorAgentExecutor (user-provided session_id not supported); fixed Agent Engine deployment to use vertexai.agent_engines instead of google.genai.Client; added jq to Cloud Build Alpine image for Terraform shells step]
