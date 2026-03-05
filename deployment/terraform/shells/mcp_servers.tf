@@ -33,7 +33,7 @@ resource "google_cloud_run_v2_service" "mcp_server" {
 
   lifecycle {
     ignore_changes = [
-      template.containers
+      template[0].containers[0].image
     ]
   }
 }
