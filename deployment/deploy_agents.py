@@ -227,6 +227,7 @@ def main():
     vertexai.init(project=project_id, location=location, staging_bucket=f"gs://{bucket_name}")
     from google import genai
     client = genai.Client(
+        vertexai=True,
         project=project_id,
         location=location,
         http_options=types.HttpOptions(
