@@ -406,7 +406,7 @@ tfplan
 credentials.json
 token.json
 client_secret.json
-.secrets.baseline
+#.secrets.baseline
 
 # Agent / AI Configuration
 .adk/
