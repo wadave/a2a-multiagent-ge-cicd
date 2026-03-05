@@ -421,6 +421,6 @@ dev_notebooks/
 scratch
 
 # Configuration to ignore
-.pre-commit-config.yaml
+#.pre-commit-config.yaml
 
 scratch/

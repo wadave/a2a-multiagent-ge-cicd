@@ -13,6 +13,7 @@ dependencies = [
     "fastmcp",
     "python-terraform>=0.10.1",
     "aiobreaker>=1.2.0",
+    "pre-commit>=4.5.1",
 ]
 
 [[tool.uv.index]]
