@@ -240,13 +240,19 @@ class AdkBaseMcpAgentExecutor(AgentExecutor, ABC):
 
             # The Runner orchestrates the agent execution
             # It manages the LLM calls, tool execution, and state
+            import os
+            from google.adk.sessions.in_memory_session_service import InMemorySessionService
+            
+            engine_id = os.environ.get("GOOGLE_CLOUD_AGENT_ENGINE_ID")
+            session_service = VertexAiSessionService(agent_engine_id=engine_id) if engine_id else InMemorySessionService()
+
             self.runner = Runner(
                 app_name=self.agent.name,
                 agent=self.agent,
                 # In-memory services for simplicity
                 # In production, you might use persistent storage
                 artifact_service=InMemoryArtifactService(),
-                session_service=VertexAiSessionService(),
+                session_service=session_service,
                 memory_service=InMemoryMemoryService(),
             )
 
