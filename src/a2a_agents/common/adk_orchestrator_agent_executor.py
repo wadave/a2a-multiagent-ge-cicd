@@ -114,6 +114,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
         self.remote_agent_addresses = remote_agent_addresses
         self.agent = None
         self.runner = None
+        self._context_to_session_id: dict[str, str] = {}
 
     async def _init_agent(self) -> None:
         """
@@ -225,22 +226,27 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
 
     async def _get_or_create_session(self, context_id: str):
         """Get existing session or create new one."""
-        session = await self.runner.session_service.get_session(
+        vertex_session_id = self._context_to_session_id.get(context_id)
+
+        if vertex_session_id:
+            try:
+                session = await self.runner.session_service.get_session(
+                    app_name=self.runner.app_name,
+                    user_id="user",
+                    session_id=vertex_session_id,
+                )
+                if session:
+                    logging.info(f"Resuming existing session for context {context_id} -> Vertex session {vertex_session_id}.")
+                    return session
+            except Exception as e:
+                logging.warning(f"Vertex session {vertex_session_id} not found or error occurred: {e}. Creating new one.")
+
+        logging.info(f"No active session found for context {context_id}, creating new one.")
+        session = await self.runner.session_service.create_session(
             app_name=self.runner.app_name,
             user_id="user",
-            session_id=context_id,
         )
-
-        if not session:
-            logging.info(f"No session found for {context_id}, creating new one.")
-            session = await self.runner.session_service.create_session(
-                app_name=self.runner.app_name,
-                user_id="user",
-                session_id=context_id,
-            )
-        else:
-            logging.info(f"Found existing session {context_id}.")
-
+        self._context_to_session_id[context_id] = session.id
         return session
 
     def _extract_answer(self, event) -> str:
