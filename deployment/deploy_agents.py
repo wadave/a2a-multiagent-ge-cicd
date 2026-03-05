@@ -35,8 +35,8 @@ import tomllib
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import vertexai
+from vertexai import agent_engines
 from dotenv import load_dotenv
-from google.genai import types
 from vertexai.preview.reasoning_engines import A2aAgent
 
 from a2a_agents.cocktail_agent.cocktail_agent_card import cocktail_agent_card
@@ -63,38 +63,31 @@ def _load_deploy_requirements() -> list[str]:
     return data["project"]["optional-dependencies"]["vertex-deploy"]
 
 
-def list_existing_agents(client):
+def list_existing_agents():
     """List all existing agents and return a dict keyed by display name."""
     agents = {}
     try:
-        for agent in client.agent_engines.list():
-            name = agent.api_resource.display_name
-            if name:
-                agents[name] = agent.api_resource.name
+        for agent in agent_engines.list():
+            if agent.display_name:
+                agents[agent.display_name] = agent.resource_name
     except Exception as e:
         logger.warning(f"Failed to list existing agents: {e}")
     return agents
 
 
-def _build_config(display_name, description, service_account, location, bucket_name, env_vars, requirements):
+def _build_config(display_name, description, service_account, env_vars, requirements):
     """Build the common deployment config dict."""
     return {
         "display_name": display_name,
         "description": description,
         "service_account": service_account,
         "requirements": requirements,
-        "http_options": {
-            "base_url": f"https://{location}-aiplatform.googleapis.com",
-            "api_version": "v1beta1",
-        },
-        "staging_bucket": f"gs://{bucket_name}",
         "env_vars": {k: v for k, v in env_vars.items() if v},
         "extra_packages": ["a2a_agents"],
     }
 
 
 def deploy_agent(
-    client,
     display_name,
     agent_card,
     executor_builder,
@@ -116,7 +109,7 @@ def deploy_agent(
 
     config = _build_config(
         display_name, a2a_agent.agent_card.description,
-        service_account, location, bucket_name, env_vars,
+        service_account, env_vars,
         requirements=requirements,
     )
 
@@ -124,27 +117,26 @@ def deploy_agent(
         agent_name = existing_agents[display_name]
         logger.info(f"Updating existing agent '{display_name}': {agent_name}")
         try:
-            remote_agent = client.agent_engines.update(
-                name=agent_name, agent=a2a_agent, config=config,
+            remote_agent = agent_engines.update(
+                resource_name=agent_name, agent_engine=a2a_agent, **config
             )
         except Exception as e:
             # Handle 404 or other errors by creating a new agent
             if "404" in str(e) or "does not exist" in str(e).lower():
                 logger.warning(f"Agent {agent_name} not found. Creating new agent instead.")
-                remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+                remote_agent = agent_engines.create(agent_engine=a2a_agent, **config)
             else:
                 raise
     else:
         logger.info(f"Creating new agent '{display_name}'...")
-        remote_agent = client.agent_engines.create(agent=a2a_agent, config=config)
+        remote_agent = agent_engines.create(agent_engine=a2a_agent, **config)
 
-    agent_name = remote_agent.api_resource.name
+    agent_name = remote_agent.resource_name
     logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
     return agent_name
 
 
 def deploy_adk_agent(
-    client,
     display_name,
     agent_factory,
     project_id,
@@ -175,7 +167,7 @@ def deploy_adk_agent(
 
     config = _build_config(
         display_name, agent_engine.description,
-        service_account, location, bucket_name, env_vars,
+        service_account, env_vars,
         requirements=requirements,
     )
 
@@ -183,21 +175,21 @@ def deploy_adk_agent(
         agent_name = existing_agents[display_name]
         logger.info(f"Updating existing agent '{display_name}': {agent_name}")
         try:
-            remote_agent = client.agent_engines.update(
-                name=agent_name, agent=agent_engine, config=config,
+            remote_agent = agent_engines.update(
+                resource_name=agent_name, agent_engine=agent_engine, **config
             )
         except Exception as e:
             # Handle 404 or other errors by creating a new agent
             if "404" in str(e) or "does not exist" in str(e).lower():
                 logger.warning(f"Agent {agent_name} not found. Creating new agent instead.")
-                remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
+                remote_agent = agent_engines.create(agent_engine=agent_engine, **config)
             else:
                 raise
     else:
         logger.info(f"Creating new agent '{display_name}'...")
-        remote_agent = client.agent_engines.create(agent=agent_engine, config=config)
+        remote_agent = agent_engines.create(agent_engine=agent_engine, **config)
 
-    agent_name = remote_agent.api_resource.name
+    agent_name = remote_agent.resource_name
     logger.info(f"Deployed '{display_name}' successfully: {agent_name}")
     return agent_name
 
@@ -225,22 +217,11 @@ def main():
         sys.exit(1)
 
     vertexai.init(project=project_id, location=location, staging_bucket=f"gs://{bucket_name}")
-    from google import genai
-    client = genai.Client(
-        vertexai=True,
-        project=project_id,
-        location=location,
-        http_options=types.HttpOptions(
-            api_version="v1beta1",
-            base_url=f"https://{location}-aiplatform.googleapis.com/",
-        ),
-    )
 
-    existing_agents = list_existing_agents(client)
+    existing_agents = list_existing_agents()
 
     # --- Deploy Cocktail Agent ---
     ct_agent_name = deploy_agent(
-        client=client,
         display_name=f"Cocktail Agent {display_name_suffix}",
         agent_card=cocktail_agent_card,
         executor_builder=CocktailAgentExecutor,
@@ -258,7 +239,6 @@ def main():
 
     # --- Deploy Weather Agent ---
     wea_agent_name = deploy_agent(
-        client=client,
         display_name=f"Weather Agent {display_name_suffix}",
         agent_card=weather_agent_card,
         executor_builder=WeatherAgentExecutor,
@@ -280,7 +260,6 @@ def main():
 
     # --- Deploy Hosting Agent (ADK agent with RemoteA2aAgent sub-agents) ---
     host_agent_name = deploy_adk_agent(
-        client=client,
         display_name=f"Hosting Agent {display_name_suffix}",
         agent_factory=create_hosting_agent,
         project_id=project_id,
