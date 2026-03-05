@@ -16,7 +16,7 @@
 # Skipped when ge_app_id is empty (e.g. environments without GE configured).
 module "gemini_enterprise_agent_engine_register" {
   count  = var.ge_app_id != "" ? 1 : 0
-  source = "../../modules/gemini_enterprise_agent_engine_register"
+  source = "../modules/gemini_enterprise_agent_engine_register"
 
   depends_on = [google_vertex_ai_reasoning_engine.app]
 
