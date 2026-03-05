@@ -65,9 +65,7 @@ module "gemini_enterprise_oauth" {
 
 # Register the Hosting Agent with Gemini Enterprise
 module "gemini_enterprise_agent_engine_register" {
-  depends_on = [
-    module.gemini_enterprise_oauth
-  ]
+  depends_on = [module.gemini_enterprise_oauth]
   # We will iterate over the staging environment only
   # Only create if the oauth secrets are provided AND the GE App ID is provided for the environment
   for_each = var.oauth_client_id_secret_name != "" ? {
@@ -80,8 +78,8 @@ module "gemini_enterprise_agent_engine_register" {
   agent_engine_region      = var.region
   gemini_enterprise_region = var.agents_region
 
-  # Map to the display name deployed by deploy_agents.py
-  agent_display_name = "ADK Hosting Agent (${each.key})"
+  # Map to the display name deployed by agent_engines.tf / deploy_agents.py
+  agent_display_name = "Hosting Agent ${title(each.key)}"
   agent_description  = "Hosting agent for ${each.key}"
 
   gemini_enterprise_agent_name       = "${local.gemini_enterprise_agent_name} (${each.key})"

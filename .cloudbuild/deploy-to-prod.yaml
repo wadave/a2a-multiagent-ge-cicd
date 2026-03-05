@@ -1,5 +1,25 @@
 steps:
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
+    id: 'terraform-apply-infrastructure-shells'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -e
+        apk add --no-cache unzip wget
+        wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+        unzip terraform_1.5.7_linux_amd64.zip
+        mv terraform /usr/local/bin/
+
+        cd deployment/terraform/shells
+        terraform init -backend-config="prefix=a2a-multiagent-ge-cicd/prod-shells"
+        terraform apply -auto-approve \
+          -var="project_id=${_PROD_PROJECT_ID}" \
+          -var="env=prod" \
+          -var="region=${_REGION}" \
+          -var="ge_app_id=${_GE_APP}"
+
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-cocktail-mcp'
     entrypoint: bash
     args:
@@ -13,10 +33,12 @@ steps:
         docker push $$IMAGE
         gcloud run deploy cocktail-mcp-ge-prod \
           --image $$IMAGE \
+          --project ${_PROD_PROJECT_ID} \
           --region ${_REGION} \
           --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
           --no-allow-unauthenticated \
           --set-env-vars "PROJECT_ID=${PROJECT_ID}"
+    waitFor: ['terraform-apply-infrastructure-shells']
 
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-weather-mcp'
@@ -32,10 +54,12 @@ steps:
         docker push $$IMAGE
         gcloud run deploy weather-mcp-ge-prod \
           --image $$IMAGE \
+          --project ${_PROD_PROJECT_ID} \
           --region ${_REGION} \
           --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
           --no-allow-unauthenticated \
           --set-env-vars "PROJECT_ID=${PROJECT_ID}"
+    waitFor: ['terraform-apply-infrastructure-shells']
 
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     entrypoint: bash
@@ -44,14 +68,14 @@ steps:
       - |
         set -e
         # Get Cloud Run URLs and append /mcp/ path (with trailing slash) for FastMCP servers
-        CT_URL=$$(gcloud run services describe cocktail-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' 2>&1)
+        CT_URL=$$(gcloud run services describe cocktail-mcp-ge-prod --project ${_PROD_PROJECT_ID} --region ${_REGION} --format 'value(status.url)' 2>&1)
         if [ -z "$$CT_URL" ] || echo "$$CT_URL" | grep -q "ERROR\|NOT_FOUND"; then
           echo "ERROR: Cocktail MCP service not found or failed to deploy"
           exit 1
         fi
         echo "$${CT_URL}/mcp/" > /workspace/cocktail_url.txt
 
-        WEA_URL=$$(gcloud run services describe weather-mcp-ge-prod --region ${_REGION} --format 'value(status.url)' 2>&1)
+        WEA_URL=$$(gcloud run services describe weather-mcp-ge-prod --project ${_PROD_PROJECT_ID} --region ${_REGION} --format 'value(status.url)' 2>&1)
         if [ -z "$$WEA_URL" ] || echo "$$WEA_URL" | grep -q "ERROR\|NOT_FOUND"; then
           echo "ERROR: Weather MCP service not found or failed to deploy"
           exit 1
@@ -129,6 +153,7 @@ steps:
         docker push $$IMAGE
         gcloud run deploy a2a-frontend-ge2-prod \
           --image $$IMAGE \
+          --project ${_PROD_PROJECT_ID} \
           --region ${_REGION} \
           --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
           --allow-unauthenticated \
@@ -137,35 +162,7 @@ steps:
           --set-env-vars "PROJECT_ID=${_PROD_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
     waitFor: ['deploy-agents']
 
-  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
-    id: 'register-agent'
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        set -e
-        apk add --no-cache jq bash unzip wget
-        wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-        unzip terraform_1.5.7_linux_amd64.zip
-        mv terraform /usr/local/bin/
 
-        cd deployment/terraform
-        terraform init
-        terraform apply -auto-approve \
-          -target='google_project_iam_member.other_projects_roles' \
-          -target='google_project_iam_member.github_runner_modelarmor_admin' \
-          -target='google_project_iam_member.github_runner_serviceusage_consumer' \
-          -target='module.gemini_enterprise_oauth["prod"]' \
-          -target='module.gemini_enterprise_agent_engine_register["prod"]'
-    env:
-      - 'TF_VAR_prod_project_id=${_PROD_PROJECT_ID}'
-      - 'TF_VAR_staging_project_id=${_PROD_PROJECT_ID}'
-      - 'TF_VAR_cicd_runner_project_id=${PROJECT_ID}'
-      - 'TF_VAR_repository_owner=placeholder'
-      - 'TF_VAR_repository_name=placeholder'
-      - 'TF_VAR_ge_app_prod=${_GE_APP}'
-      - 'TF_VAR_auth_id_prod=${_AUTH_ID}'
-    waitFor: ['deploy-agents']
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here
 # These are set in deployment/terraform/build_triggers.tf

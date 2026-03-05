@@ -12,5 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Agent Engine is deployed and managed entirely by deployment/deploy_agents.py in CI/CD.
-# Terraform only manages the supporting infrastructure above (Cloud Run, Artifact Registry, API enablement, IAM).
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 7.13.0"
+    }
+  }
+}
+
+provider "google" {
+  project               = var.project_id
+  region                = var.region
+  user_project_override = true
+}
