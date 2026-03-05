@@ -18,8 +18,6 @@ module "gemini_enterprise_agent_engine_register" {
   count  = var.ge_app_id != "" ? 1 : 0
   source = "../modules/gemini_enterprise_agent_engine_register"
 
-  depends_on = [google_vertex_ai_reasoning_engine.app]
-
   project_id               = var.project_id
   agent_engine_region      = var.region
   gemini_enterprise_region = var.agents_region

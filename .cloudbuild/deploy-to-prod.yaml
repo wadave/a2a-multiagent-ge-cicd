@@ -1,25 +1,5 @@
 steps:
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
-    id: 'terraform-apply-infrastructure-shells'
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        set -e
-        apk add --no-cache unzip wget
-        wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
-        unzip terraform_1.5.7_linux_amd64.zip
-        mv terraform /usr/local/bin/
-
-        cd deployment/terraform/shells
-        terraform init -backend-config="prefix=a2a-multiagent-ge-cicd/prod-shells"
-        terraform apply -auto-approve \
-          -var="project_id=${_PROD_PROJECT_ID}" \
-          -var="env=prod" \
-          -var="region=${_REGION}" \
-          -var="ge_app_id=${_GE_APP}"
-
-  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-cocktail-mcp'
     entrypoint: bash
     args:
@@ -38,7 +18,6 @@ steps:
           --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
           --no-allow-unauthenticated \
           --set-env-vars "PROJECT_ID=${PROJECT_ID}"
-    waitFor: ['terraform-apply-infrastructure-shells']
 
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     id: 'deploy-weather-mcp'
@@ -59,7 +38,6 @@ steps:
           --service-account ${_APP_SERVICE_ACCOUNT_PROD} \
           --no-allow-unauthenticated \
           --set-env-vars "PROJECT_ID=${PROJECT_ID}"
-    waitFor: ['terraform-apply-infrastructure-shells']
 
   - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
     entrypoint: bash
@@ -162,7 +140,26 @@ steps:
           --set-env-vars "PROJECT_ID=${_PROD_PROJECT_ID},PROJECT_NUMBER=${_PROJECT_NUMBER},AGENT_ENGINE_ID=$${AGENT_ENGINE_ID},GOOGLE_CLOUD_LOCATION=${_REGION}"
     waitFor: ['deploy-agents']
 
+  - name: 'gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine'
+    id: 'terraform-apply-infrastructure-shells'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -e
+        apk add --no-cache unzip wget
+        wget -q https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+        unzip terraform_1.5.7_linux_amd64.zip
+        mv terraform /usr/local/bin/
 
+        cd deployment/terraform/shells
+        terraform init -backend-config="prefix=a2a-multiagent-ge-cicd/prod-shells"
+        terraform apply -auto-approve \
+          -var="project_id=${_PROD_PROJECT_ID}" \
+          -var="env=prod" \
+          -var="region=${_REGION}" \
+          -var="ge_app_id=${_GE_APP}"
+    waitFor: ['deploy-frontend']
 
 # Substitutions are provided by Terraform - DO NOT hard-code values here
 # These are set in deployment/terraform/build_triggers.tf
