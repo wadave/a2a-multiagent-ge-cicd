@@ -345,6 +345,29 @@ Here are some example questions you can ask the chatbot:
 ![cicd_pipeline](assets/google_cloudbuild.jpeg)
 You will need create a GitHub repository and push this repository to GitHub.
 
+### Environment Onboarding Workflow
+
+1. **Clone Repo**
+   Standard git cloning to get the application code and the Terraform configurations locally so you can bootstrap the environment.
+
+2. **Set up GitHub to GCP Account Connection**
+   This is critical. Because this project relies on Google Cloud Build for its CI/CD pipeline, GCP needs authorization to read from your cloned GitHub repository. You set up this Cloud Build Connection so that Google Cloud knows to listen for commits on specific branches for this repo.
+
+3. **Run `terraform init` and `apply`**
+   This is your "one-off" infrastructure bootstrap for a new environment. When you run this against a completely empty GCP project, Terraform will:
+   - Enable all necessary Google Cloud APIs (Vertex AI, Cloud Run, Secret Manager, etc.).
+   - Create the rigid security boundaries, Service Accounts, and IAM roles.
+   - Create the Artifact Registry where your Docker containers will live.
+   - Create the Cloud Build Triggers that link your GCP project to your GitHub repo.
+   - Provision the "Shells" for your Cloud Run MCP Servers (using a dummy hello-world container) and your Vertex AI Agent Engines (using the `source-b64.txt` dummy payload).
+
+   After Step 3, your infrastructure exists, but it doesn't do anything yet because it's full of dummy placeholder code.
+
+4. **Modify code, and push to repo to trigger CI/CD pipeline**
+   Once you push your code to the appropriate branch (e.g., `main` or `staging`), the Cloud Build trigger (from Step 2 & 3) will execute the `deploy-to-prod.yaml` or `staging.yaml` pipeline.
+   - **The pipeline takes over:** It builds the actual Docker images for your MCP servers and pushes them to the Artifact Registry.
+   - **SDK Deployment:** It runs `deployment/deploy_agents.py`, which uses the Python SDK to overwrite those dummy Terraform shells. It patches the Cloud Run services with the newly built Docker images and uploads your actual Python tarballs into the Agent Engine resources.
+
 You have two options for setting up CI/CD:
 
 ### Option 1: Quick Setup with agent-starter-pack (Recommended)
