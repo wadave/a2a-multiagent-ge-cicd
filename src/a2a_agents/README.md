@@ -13,11 +13,12 @@ The architecture follows a hierarchical pattern where a `HostingAgent` acts as t
 ├── cocktail_agent/         # Specialized agent for cocktail recipes
 │   ├── cocktail_agent_card.py
 │   └── cocktail_agent_executor.py
-├── commons/                # Common modules and base classes
+├── common/                 # Common modules and base classes
 │   ├── adk_base_mcp_agent_executor.py
 │   ├── adk_orchestrator_agent_executor.py
 │   ├── adk_orchestrator_agent.py
 │   ├── agent_configs.py
+│   ├── auth_utils.py
 │   └── remote_connection.py
 ├── hosting_agent/          # Main entry point and orchestrator
 │   ├── agent_executor.py

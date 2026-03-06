@@ -48,6 +48,7 @@ resource "google_cloudbuild_trigger" "pr_checks" {
     "deployment/**",
     "uv.lock",
   ]
+  ignored_files      = ["**/*.md"]
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   depends_on = [
     resource.google_project_service.cicd_services,
@@ -83,6 +84,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     "deployment/**",
     "uv.lock",
   ]
+  ignored_files      = ["**/*.md"]
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {
     _STAGING_PROJECT_ID          = var.staging_project_id
