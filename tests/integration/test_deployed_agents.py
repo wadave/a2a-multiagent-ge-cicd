@@ -14,6 +14,7 @@
 # Author: Dave Wang
 
 """Integration tests for deployed A2A agents (Cocktail and Weather)."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -96,9 +97,9 @@ async def test_weather_houston():
 
 async def main():
     """Run all remote agent tests."""
-    print("="*80)
+    print("=" * 80)
     print("TESTING DEPLOYED A2A AGENTS")
-    print("="*80)
+    print("=" * 80)
 
     results = []
 

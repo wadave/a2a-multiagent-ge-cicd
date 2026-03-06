@@ -1,3 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+  "black>=25.9.0",
+  "flake8>=7.3.0",
+  "ruff>=0.9.0",
+  "codespell>=2.4.0"
+]
+
 [project]
 name = "a2a-agents"
 version = "0.1.0"
@@ -14,26 +26,18 @@ dependencies = [
   "google-genai>=1.36.0",
   "gradio>=5.46.1",
   "ipykernel>=6.30.1",
-  "nbqa>=1.9.1",
-]
-
-[dependency-groups]
-dev = [
-  "black>=25.9.0",
-  "flake8>=7.3.0",
-  "ruff>=0.9.0",
-  "codespell>=2.4.0",
+  "nbqa>=1.9.1"
 ]
 
 [project.optional-dependencies]
 vertex-deploy = [
-    "google-cloud-aiplatform[agent_engines,adk]~=1.139.0",
-    "a2a-sdk~=0.3.4",
-    "pydantic==2.12.5",
-    "cloudpickle==3.1.2",
-    "google-auth-oauthlib>=1.2.2",
-    "google-auth>=2.40.3",
-    "google-genai~=1.65.0",
+  "google-cloud-aiplatform[agent_engines,adk]~=1.139.0",
+  "a2a-sdk~=0.3.4",
+  "pydantic==2.12.5",
+  "cloudpickle==3.1.2",
+  "google-auth-oauthlib>=1.2.2",
+  "google-auth>=2.40.3",
+  "google-genai~=1.65.0"
 ]
 
 [tool.ruff]
@@ -43,10 +47,6 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP"]
 ignore = ["E501"]
-
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["a2a_agents", "a2a_agents.cocktail_agent", "a2a_agents.weather_agent", "a2a_agents.hosting_agent", "a2a_agents.common"]

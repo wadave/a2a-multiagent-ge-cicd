@@ -14,6 +14,7 @@
 # Author: Dave Wang
 
 """Integration test for deployed frontend UI."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -33,9 +34,9 @@ async def test_frontend_ui():
         print("ERROR: FRONTEND_URL not configured. Set PROJECT_NUMBER env var.")
         return False
 
-    print("="*80)
+    print("=" * 80)
     print("TESTING DEPLOYED FRONTEND UI")
-    print("="*80)
+    print("=" * 80)
     print(f"\nFrontend URL: {frontend_url}")
     print("\nTo test the UI:")
     print(f"1. Open: {frontend_url}")
@@ -44,7 +45,7 @@ async def test_frontend_ui():
     print("   - 'what's in a margarita?'")
     print("   - 'list a random cocktail'")
     print("   - 'weather in Dallas, TX'")
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
 
     # Test accessibility
     import httpx
@@ -69,13 +70,13 @@ async def main():
     """Run frontend test."""
     success = await test_frontend_ui()
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     if success:
         print("✓ FRONTEND DEPLOYMENT TEST PASSED!")
         print("\nNext step: Open the URL in your browser and test the chat interface")
     else:
         print("✗ FRONTEND DEPLOYMENT TEST FAILED")
-    print("="*80)
+    print("=" * 80)
 
     return success
 

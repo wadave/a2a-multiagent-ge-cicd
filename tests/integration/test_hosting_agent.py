@@ -14,6 +14,7 @@
 # Author: Dave Wang
 
 """Integration tests for the deployed Hosting Agent (ADK)."""
+
 import asyncio
 import sys
 from pathlib import Path
@@ -81,9 +82,9 @@ async def test_hosting_agent_houston_weather():
 
 async def main():
     """Run all hosting agent tests."""
-    print("="*80)
+    print("=" * 80)
     print("TESTING DEPLOYED HOSTING AGENT (ADK)")
-    print("="*80)
+    print("=" * 80)
 
     results = []
 

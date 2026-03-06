@@ -163,7 +163,7 @@ graph TD
 
     %% Google Cloud Agent Engine Boundary
     subgraph GCP_AE ["Google Cloud Agent Engine Runtime Boundary"]
-        
+
         %% 2. Orchestration Tier
         subgraph Tier2 ["2. Orchestration Tier"]
             HA["Host Agent (ADK)<br/>Central Routing & Orchestration"]:::host
@@ -182,7 +182,7 @@ graph TD
             LOG["Cloud Logging<br/>(Auditing/Debugging)"]:::obs
             MON["Cloud Monitoring<br/>(Health/Metrics)"]:::obs
             TRC["Cloud Trace<br/>(Distributed Tracing)"]:::obs
-            
+
             TelemetryBus -.-> LOG
             TelemetryBus -.-> MON
             TelemetryBus -.-> TRC
@@ -272,7 +272,7 @@ The agents interact with the following MCP servers:
 │       ├── locals.tf             #   Agent definitions, service lists
 │       ├── mcp_iam.tf            #   MCP server IAM permissions
 │       ├── providers.tf          #   Provider versions
-│       ├── service.tf            #   Agent Engine placeholder 
+│       ├── service.tf            #   Agent Engine placeholder
 │       ├── service_accounts.tf   #   Service accounts (CICD + app)
 │       ├── storage.tf            #   GCS buckets for logs
 │       ├── telemetry.tf          #   BigQuery telemetry

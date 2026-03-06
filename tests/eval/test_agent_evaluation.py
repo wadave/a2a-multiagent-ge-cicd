@@ -146,7 +146,10 @@ class TestAgentResponseQuality:
 
         # These queries should be routed to Weather Agent
         for query in weather_queries:
-            assert any(word in query.lower() for word in ["weather", "forecast", "rain", "temperature", "conditions"])
+            assert any(
+                word in query.lower()
+                for word in ["weather", "forecast", "rain", "temperature", "conditions"]
+            )
 
     def test_cocktail_query_routing(self):
         """Test that cocktail queries should route to Cocktail Agent."""
@@ -173,9 +176,7 @@ class TestAgentResponseQuality:
 
         # These queries should not contain agent-specific keywords
         for query in general_queries:
-            assert not any(
-                word in query.lower() for word in ["weather", "cocktail", "forecast"]
-            )
+            assert not any(word in query.lower() for word in ["weather", "cocktail", "forecast"])
 
     def test_response_format_markdown(self):
         """Test that responses should be formatted in Markdown."""

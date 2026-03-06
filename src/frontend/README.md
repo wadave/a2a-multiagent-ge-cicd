@@ -98,4 +98,3 @@ gcloud run services add-iam-policy-binding $SERVICE_NAME \
 ```
 
 You can then open the Cloud Run service in a browser to access the app.
-

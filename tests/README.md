@@ -78,6 +78,7 @@ The `test_utils.py` module provides shared utilities:
 from test_config import COCKTAIL_AGENT_ID, PROJECT_NUMBER, LOCATION
 from test_utils import test_a2a_agent
 
+
 async def my_test():
     success, response = await test_a2a_agent(
         agent_id=COCKTAIL_AGENT_ID,

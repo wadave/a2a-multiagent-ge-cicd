@@ -14,6 +14,7 @@
 # Author: Dave Wang
 
 """Shared test utilities."""
+
 import asyncio
 import subprocess
 
@@ -23,10 +24,7 @@ import httpx
 def get_gcloud_token() -> str:
     """Get gcloud access token for authentication."""
     result = subprocess.run(
-        ["gcloud", "auth", "print-access-token"],
-        capture_output=True,
-        text=True,
-        check=True
+        ["gcloud", "auth", "print-access-token"], capture_output=True, text=True, check=True
     )
     return result.stdout.strip()
 
@@ -57,11 +55,11 @@ async def test_a2a_agent(
     Returns:
         Tuple of (success, response_text)
     """
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {agent_name}")
     print(f"Agent ID: {agent_id}")
     print(f"Query: {query}")
-    print('='*80)
+    print("=" * 80)
 
     resource_name = f"projects/{project_number}/locations/{location}/reasoningEngines/{agent_id}"
     base_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/{resource_name}/a2a"
@@ -106,13 +104,13 @@ async def test_a2a_agent(
             resp = await client.get(task_url, headers=headers, params={"history_length": 1})
 
             if resp.status_code != 200:
-                print(f"  Poll {i+1}: Failed with {resp.status_code}, retrying...")
+                print(f"  Poll {i + 1}: Failed with {resp.status_code}, retrying...")
                 await asyncio.sleep(poll_interval)
                 continue
 
             task_data = resp.json()
             state = task_data.get("status", {}).get("state")
-            print(f"  Poll {i+1}: State = {state}")
+            print(f"  Poll {i + 1}: State = {state}")
 
             if state == "TASK_STATE_COMPLETED":
                 artifacts = task_data.get("artifacts", [])
@@ -168,11 +166,11 @@ async def test_adk_agent(
     import vertexai
     from vertexai import agent_engines
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("Testing ADK Agent")
     print(f"Resource: {agent_resource_name}")
     print(f"Query: {query}")
-    print('='*80)
+    print("=" * 80)
 
     # Initialize Vertex AI
     vertexai.init(project=project_id, location=location)
@@ -197,7 +195,8 @@ async def test_adk_agent(
 
     # Extract final text response
     final_text_responses = [
-        e for e in events
+        e
+        for e in events
         if e.get("content", {}).get("parts", [{}])[0].get("text")
         and not e.get("content", {}).get("parts", [{}])[0].get("function_call")
     ]
@@ -226,20 +225,20 @@ def print_test_summary(results: list[tuple[str, bool]]) -> bool:
     Returns:
         True if all tests passed
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("TEST SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     for test_name, passed in results:
         status = "✓ PASSED" if passed else "✗ FAILED"
         print(f"{status}: {test_name}")
 
     all_passed = all(result[1] for result in results)
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     if all_passed:
         print("✓ ALL TESTS PASSED!")
     else:
         print("✗ SOME TESTS FAILED")
-    print("="*80)
+    print("=" * 80)
 
     return all_passed

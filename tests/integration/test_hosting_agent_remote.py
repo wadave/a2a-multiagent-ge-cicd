@@ -1,4 +1,5 @@
 """Remote integration test for the deployed Hosting Agent via A2A protocol."""
+
 import asyncio
 import logging
 import sys
@@ -78,10 +79,10 @@ async def send_message_and_wait(
 
 async def test_agent(agent_url: str, agent_name: str, test_cases: list):
     """Test a deployed agent with multiple test cases."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {agent_name}")
     print(f"URL: {agent_url}")
-    print('='*80)
+    print("=" * 80)
 
     token = get_gcloud_token()
     headers = {
@@ -127,9 +128,9 @@ async def test_agent(agent_url: str, agent_name: str, test_cases: list):
         await asyncio.sleep(1)
 
     # Summary
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Test Summary for {agent_name}")
-    print('='*80)
+    print("=" * 80)
     for category, success, error in results:
         status = "PASS" if success else "FAIL"
         print(f"{status} {category}" + (f" - {error[:100]}" if error else ""))
@@ -144,7 +145,9 @@ async def test_agent(agent_url: str, agent_name: str, test_cases: list):
 async def main():
     """Test the deployed hosting agent via A2A protocol."""
     if not HOSTING_AGENT_URL:
-        print("ERROR: HOSTING_AGENT_URL not configured. Set HOSTING_AGENT_ID and PROJECT_NUMBER env vars.")
+        print(
+            "ERROR: HOSTING_AGENT_URL not configured. Set HOSTING_AGENT_ID and PROJECT_NUMBER env vars."
+        )
         sys.exit(1)
 
     test_cases = [
@@ -156,9 +159,9 @@ async def main():
 
     passed = await test_agent(HOSTING_AGENT_URL, "Hosting Agent (A2A)", test_cases)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("OVERALL RESULT")
-    print('='*80)
+    print("=" * 80)
     if passed:
         print("All tests passed")
     else:

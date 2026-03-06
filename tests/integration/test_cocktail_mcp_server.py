@@ -23,9 +23,7 @@ async def test_cocktail_mcp_list_tools():
 async def test_cocktail_mcp_search_by_name():
     """Verify search_cocktail_by_name returns results for 'margarita'."""
     async with Client(COCKTAIL_MCP_URL) as client:
-        result = await client.call_tool(
-            "search_cocktail_by_name", {"name": "margarita"}
-        )
+        result = await client.call_tool("search_cocktail_by_name", {"name": "margarita"})
         assert len(result) > 0
         assert result[0].text
         assert "margarita" in result[0].text.lower()

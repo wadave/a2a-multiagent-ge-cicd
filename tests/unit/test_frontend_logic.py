@@ -85,18 +85,22 @@ class TestGoogleAuthClass:
 class TestEnvironmentConfiguration:
     """Tests for environment variable configuration."""
 
-    @patch.dict(os.environ, {
-        "PROJECT_ID": "test-project",
-        "PROJECT_NUMBER": "123456",
-        "AGENT_ENGINE_ID": "789",
-        "GOOGLE_CLOUD_LOCATION": "us-west1"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "PROJECT_ID": "test-project",
+            "PROJECT_NUMBER": "123456",
+            "AGENT_ENGINE_ID": "789",
+            "GOOGLE_CLOUD_LOCATION": "us-west1",
+        },
+    )
     def test_environment_variables_loaded(self):
         """Verify environment variables are loaded correctly."""
         # Force reload of main module to pick up environment
         import importlib
 
         import frontend.main
+
         importlib.reload(frontend.main)
 
         assert frontend.main.PROJECT_ID == "test-project"
@@ -110,6 +114,7 @@ class TestEnvironmentConfiguration:
         import importlib
 
         import frontend.main
+
         importlib.reload(frontend.main)
 
         # Default should be us-central1
@@ -194,16 +199,20 @@ class TestErrorHandling:
 class TestResourceNameConstruction:
     """Tests for resource name construction."""
 
-    @patch.dict(os.environ, {
-        "PROJECT_NUMBER": "123456",
-        "GOOGLE_CLOUD_LOCATION": "us-central1",
-        "AGENT_ENGINE_ID": "789"
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "PROJECT_NUMBER": "123456",
+            "GOOGLE_CLOUD_LOCATION": "us-central1",
+            "AGENT_ENGINE_ID": "789",
+        },
+    )
     def test_resource_name_format(self):
         """Verify resource name is properly formatted."""
         import importlib
 
         import frontend.main
+
         importlib.reload(frontend.main)
 
         expected = "projects/123456/locations/us-central1/reasoningEngines/789"

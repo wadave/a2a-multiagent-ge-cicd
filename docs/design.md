@@ -91,7 +91,7 @@
 
 ## 6. External Interfaces
 - **User Interface**: Gemini Enterprise and a custom Gradio testing frontend.
-- **External APIs**: 
+- **External APIs**:
   - *TheCocktailDB API*: Fetch recipes, lists, and ingredient data.
   - *National Weather Service (NWS) API*: Fetch localized weather forecasts.
 - **Network Protocols**: A2A (internal RPC/REST), MCP over StreamableHTTP, standard REST/JSON.
@@ -182,7 +182,7 @@ This section details the framework for ensuring data integrity, regional complia
 
 ## 13. Appendices
 - **Directory Structure**: Refer to `README.md` for standard repository mapping.
-- **Change History**: 
+- **Change History**:
   - [v1.0.0, Current Date, Initial Architecture Design]
   - [v1.0.1, 2026-02-27, Added AI Lifecycle Management section]
   - [v1.0.2, 2026-02-27, Added Compliance and Governance section]

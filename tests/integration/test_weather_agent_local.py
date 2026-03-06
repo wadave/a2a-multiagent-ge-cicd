@@ -1,4 +1,5 @@
 """Local integration test for the Weather Agent (runs agent in-process via A2aAgent)."""
+
 import asyncio
 import json
 import logging
@@ -28,6 +29,7 @@ logging.basicConfig(level=logging.INFO)
 
 # --- Monkeypatch for Local Auth ---
 
+
 def mock_get_gcp_auth_headers(audience: str) -> dict[str, str]:
     """Mock that uses gcloud to get a token working for local user."""
     try:
@@ -39,17 +41,21 @@ def mock_get_gcp_auth_headers(audience: str) -> dict[str, str]:
         logging.error(f"Failed to get gcloud token: {e}")
         return {}
 
+
 # Apply the patch
 executor_module.get_gcp_auth_headers = mock_get_gcp_auth_headers
 logging.info("Monkeypatched get_gcp_auth_headers for local testing")
 
 # --- Helpers ---
 
+
 def receive_wrapper(data: dict) -> Callable[[], Awaitable[dict]]:
     async def receive():
         byte_data = json.dumps(data).encode("utf-8")
         return {"type": "http.request", "body": byte_data, "more_body": False}
+
     return receive
+
 
 def build_post_request(data: dict[str, Any] | None = None) -> Request:
     scope = {
@@ -61,6 +67,7 @@ def build_post_request(data: dict[str, Any] | None = None) -> Request:
     receiver = receive_wrapper(data)
     return Request(scope, receiver)
 
+
 def build_get_request(path_params: dict[str, str]) -> Request:
     scope = {
         "type": "http",
@@ -70,11 +77,15 @@ def build_get_request(path_params: dict[str, str]) -> Request:
     }
     if path_params:
         scope["path_params"] = path_params
+
     async def receive():
         return {"type": "http.disconnect"}
+
     return Request(scope, receive)
 
+
 # --- Test Logic ---
+
 
 async def test_agent_locally():
     mcp_url = os.environ.get("WEA_MCP_SERVER_URL") or WEA_MCP_SERVER_URL
@@ -87,16 +98,12 @@ async def test_agent_locally():
 
     print("\n--- Initializing A2aAgent (Weather) ---")
     print(f"MCP URL: {mcp_url}")
-    a2a_agent = A2aAgent(
-        agent_card=weather_agent_card, agent_executor_builder=WeatherAgentExecutor
-    )
+    a2a_agent = A2aAgent(agent_card=weather_agent_card, agent_executor_builder=WeatherAgentExecutor)
     a2a_agent.set_up()
 
     print("\n--- Getting Agent Card ---")
     request = build_get_request(None)
-    response = await a2a_agent.handle_authenticated_agent_card(
-        request=request, context=None
-    )
+    response = await a2a_agent.handle_authenticated_agent_card(request=request, context=None)
     print(f"Agent Name: {response.get('name')}")
 
     print("\n--- Sending Message ---")
@@ -132,6 +139,7 @@ async def test_agent_locally():
             break
 
         await asyncio.sleep(2)
+
 
 if __name__ == "__main__":
     asyncio.run(test_agent_locally())

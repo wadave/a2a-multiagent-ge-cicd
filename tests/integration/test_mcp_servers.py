@@ -1,4 +1,5 @@
 """Integration test for deployed MCP servers with authentication."""
+
 import asyncio
 import os
 import subprocess
@@ -64,9 +65,7 @@ async def test_cocktail_server():
             print(f"  Tool found: {tool.name}")
 
         print("Calling search_cocktail_by_name('margarita')...")
-        result = await client.call_tool(
-            "search_cocktail_by_name", {"name": "margarita"}
-        )
+        result = await client.call_tool("search_cocktail_by_name", {"name": "margarita"})
         print(f"  Result: {result.content[0].text[:200]}...")
 
 
@@ -95,9 +94,7 @@ async def test_weather_server():
             print(f"  Tool found: {tool.name}")
 
         print("Calling get_forecast_by_city('New York', 'NY')...")
-        result = await client.call_tool(
-            "get_forecast_by_city", {"city": "New York", "state": "NY"}
-        )
+        result = await client.call_tool("get_forecast_by_city", {"city": "New York", "state": "NY"})
         print(f"  Result: {result.content[0].text[:200]}...")
 
 
@@ -109,6 +106,7 @@ async def main():
         print(f"Error during testing: {e}")
         print("Ensure you have authenticated with 'gcloud auth application-default login'")
         print("and that the servers are reachable and configured with correct IAM permissions.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

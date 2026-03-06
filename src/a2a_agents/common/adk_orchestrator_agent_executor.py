@@ -135,10 +135,15 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             # The Runner orchestrates the agent execution
             # It manages the LLM calls, tool execution, and state
             import os
+
             from google.adk.sessions.in_memory_session_service import InMemorySessionService
-            
+
             engine_id = os.environ.get("GOOGLE_CLOUD_AGENT_ENGINE_ID")
-            session_service = VertexAiSessionService(agent_engine_id=engine_id) if engine_id else InMemorySessionService()
+            session_service = (
+                VertexAiSessionService(agent_engine_id=engine_id)
+                if engine_id
+                else InMemorySessionService()
+            )
 
             self.runner = Runner(
                 app_name=self.agent.name,
@@ -237,14 +242,18 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
                     session_id=vertex_session_id,
                 )
                 if session:
-                    logging.info(f"Resuming existing session for context {context_id} -> Vertex session {vertex_session_id}.")
+                    logging.info(
+                        f"Resuming existing session for context {context_id} -> Vertex session {vertex_session_id}."
+                    )
                     # Bump to end for LRU cache effect
                     if context_id in self._context_to_session_id:
                         val = self._context_to_session_id.pop(context_id)
                         self._context_to_session_id[context_id] = val
                     return session
             except Exception as e:
-                logging.warning(f"Vertex session {vertex_session_id} not found or error occurred: {e}. Creating new one.")
+                logging.warning(
+                    f"Vertex session {vertex_session_id} not found or error occurred: {e}. Creating new one."
+                )
 
         logging.info(f"No active session found for context {context_id}, creating new one.")
         session = await self.runner.session_service.create_session(
@@ -258,7 +267,7 @@ class AdkOrchestratorAgentExecutor(AgentExecutor):
             oldest_key = next(iter(self._context_to_session_id))
             if oldest_key != context_id:
                 del self._context_to_session_id[oldest_key]
-                
+
         return session
 
     def _extract_answer(self, event) -> str:

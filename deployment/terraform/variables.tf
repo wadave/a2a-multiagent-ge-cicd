@@ -187,4 +187,3 @@ variable "agents_region" {
   description = "The region for Gemini Enterprise."
   default     = "global"
 }
-

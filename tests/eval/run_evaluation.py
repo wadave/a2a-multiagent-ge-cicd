@@ -30,9 +30,7 @@ except ImportError:
     # Fallback if run from a context where relative import is needed or sys.path isn't enough
     from .evaluator import LLMEvaluator
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # NOTE: LLM-based evaluation requires a GCP project with Vertex AI enabled.
@@ -93,7 +91,9 @@ def calculate_rubric_score(example: dict, response: str) -> dict[str, float]:
     return scores
 
 
-async def evaluate_example(example: dict, config: dict, evaluator: LLMEvaluator | None = None) -> dict:
+async def evaluate_example(
+    example: dict, config: dict, evaluator: LLMEvaluator | None = None
+) -> dict:
     """Evaluate a single example.
 
     Args:
@@ -107,7 +107,11 @@ async def evaluate_example(example: dict, config: dict, evaluator: LLMEvaluator 
     result = {
         "example_id": example.get("id") or example.get("eval_id", "unknown"),
         "category": example.get("category", "unknown"),
-        "input": example.get("input") or example.get("conversation", [{}])[0].get("user_content", {}).get("parts", [{}])[0].get("text", ""),
+        "input": example.get("input")
+        or example.get("conversation", [{}])[0]
+        .get("user_content", {})
+        .get("parts", [{}])[0]
+        .get("text", ""),
         "passed": False,
         "scores": {},
         "notes": [],
@@ -122,7 +126,9 @@ async def evaluate_example(example: dict, config: dict, evaluator: LLMEvaluator 
     mock_response = "Mock agent response with **formatted** content:\n- Item 1\n- Item 2"
 
     if evaluator:
-        rubrics = config["criteria"].get("rubric_based_final_response_quality_v1", {}).get("rubrics", [])
+        rubrics = (
+            config["criteria"].get("rubric_based_final_response_quality_v1", {}).get("rubrics", [])
+        )
         scores = await evaluator.score_response(result["input"], mock_response, rubrics)
     else:
         scores = calculate_rubric_score(example, mock_response)
@@ -139,9 +145,7 @@ async def evaluate_example(example: dict, config: dict, evaluator: LLMEvaluator 
     result["passed"] = avg_score >= threshold
 
     if not result["passed"]:
-        result["notes"].append(
-            f"Average score {avg_score:.2f} below threshold {threshold}"
-        )
+        result["notes"].append(f"Average score {avg_score:.2f} below threshold {threshold}")
 
     return result
 
@@ -217,7 +221,9 @@ def main():
 
     async def run_eval():
         for i, example in enumerate(examples, 1):
-            logger.info(f"Evaluating example {i}/{len(examples)}: {example.get('id') or example.get('eval_id')}")
+            logger.info(
+                f"Evaluating example {i}/{len(examples)}: {example.get('id') or example.get('eval_id')}"
+            )
             result = await evaluate_example(example, config, evaluator)
             results.append(result)
 

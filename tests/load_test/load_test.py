@@ -56,7 +56,9 @@ if not project_number or not engine_id:
 
 # Convert to streaming URL
 base_url = f"https://{location}-aiplatform.googleapis.com"
-url_path = f"/v1/projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+url_path = (
+    f"/v1/projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+)
 
 logger.info("Load Test Configuration:")
 logger.info(f"  Project Number: {project_number}")
@@ -120,9 +122,7 @@ class ChatStreamUser(HttpUser):
                             if isinstance(event_data, dict) and "code" in event_data:
                                 if event_data["code"] >= 400:
                                     has_error = True
-                                    error_msg = event_data.get(
-                                        "message", "Unknown error"
-                                    )
+                                    error_msg = event_data.get("message", "Unknown error")
                                     response.failure(f"Error in response: {error_msg}")
                                     logger.error(
                                         "Received error response: code=%s, message=%s",

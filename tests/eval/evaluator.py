@@ -25,10 +25,13 @@ from google.genai.types import HttpOptions
 
 logger = logging.getLogger(__name__)
 
+
 class LLMEvaluator:
     """Evaluates agent responses using an LLM with Flex Tier."""
 
-    def __init__(self, project_id: str, location: str = "global", model_id: str = "gemini-3-flash-preview"):
+    def __init__(
+        self, project_id: str, location: str = "global", model_id: str = "gemini-3-flash-preview"
+    ):
         """Initialize the LLM evaluator.
 
         Args:
@@ -49,14 +52,16 @@ class LLMEvaluator:
                 api_version="v1",
                 headers={
                     "X-Vertex-AI-LLM-Request-Type": "shared",
-                    "X-Vertex-AI-LLM-Shared-Request-Type": "flex"
+                    "X-Vertex-AI-LLM-Shared-Request-Type": "flex",
                 },
                 timeout=1800000,  # 30 minutes in milliseconds
-            )
+            ),
         )
         logger.info(f"Initialized LLMEvaluator with model {model_id} in {location} using Flex Tier")
 
-    async def score_response(self, input_text: str, response_text: str, rubrics: list[dict]) -> dict[str, float]:
+    async def score_response(
+        self, input_text: str, response_text: str, rubrics: list[dict]
+    ) -> dict[str, float]:
         """Score an agent response against multiple rubrics.
 
         Args:
@@ -67,10 +72,9 @@ class LLMEvaluator:
         Returns:
             Dictionary mapping rubricId to a float score (0.0 to 1.0)
         """
-        rubric_descriptions = "\n".join([
-            f"- {r['rubricId']}: {r['rubricContent']['textProperty']}"
-            for r in rubrics
-        ])
+        rubric_descriptions = "\n".join(
+            [f"- {r['rubricId']}: {r['rubricContent']['textProperty']}" for r in rubrics]
+        )
 
         prompt = f"""
         You are an expert evaluator of AI agent responses.
@@ -99,7 +103,7 @@ class LLMEvaluator:
                 contents=prompt,
                 config={
                     "response_mime_type": "application/json",
-                }
+                },
             )
 
             if response.text:

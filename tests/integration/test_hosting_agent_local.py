@@ -1,4 +1,5 @@
 """Local integration test for the Hosting Agent (runs agent in-process)."""
+
 import asyncio
 import logging
 import os
@@ -27,11 +28,10 @@ logging.basicConfig(level=logging.INFO)
 
 # --- Monkeypatch Auth for Local Testing ---
 
+
 def mock_get_gcloud_token() -> str:
     try:
-        return subprocess.check_output(
-            ["gcloud", "auth", "print-access-token"], text=True
-        ).strip()
+        return subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True).strip()
     except Exception as e:
         logging.error(f"Failed to get gcloud token: {e}")
         return ""
@@ -56,6 +56,7 @@ adk_agent_module.default = mock_default
 logging.info("Monkeypatched google.auth.default for local testing")
 
 # --- Test Logic ---
+
 
 async def test_hosting_agent_local():
     # Load environment variables from .env file
@@ -101,14 +102,12 @@ async def test_hosting_agent_local():
     content = types.Content(role="user", parts=[types.Part(text=query)])
 
     async for event in runner.run_async(
-        session_id=session_id,
-        user_id=user_id,
-        new_message=content
+        session_id=session_id, user_id=user_id, new_message=content
     ):
         print(f"Event type: {type(event).__name__}, is_final: {event.is_final_response()}")
-        if hasattr(event, 'content') and event.content:
+        if hasattr(event, "content") and event.content:
             print(f"Content: {event.content}")
-        if hasattr(event, 'error') and event.error:
+        if hasattr(event, "error") and event.error:
             print(f"Error: {event.error}")
 
         if event.is_final_response():
@@ -119,7 +118,7 @@ async def test_hosting_agent_local():
                         print(part.text)
             else:
                 print("No content in final response")
-                if hasattr(event, 'error') and event.error:
+                if hasattr(event, "error") and event.error:
                     print(f"Error details: {event.error}")
 
     # Test 2: Cocktail
@@ -129,14 +128,12 @@ async def test_hosting_agent_local():
     content = types.Content(role="user", parts=[types.Part(text=query)])
 
     async for event in runner.run_async(
-        session_id=session_id,
-        user_id=user_id,
-        new_message=content
+        session_id=session_id, user_id=user_id, new_message=content
     ):
         print(f"Event type: {type(event).__name__}, is_final: {event.is_final_response()}")
-        if hasattr(event, 'content') and event.content:
+        if hasattr(event, "content") and event.content:
             print(f"Content: {event.content}")
-        if hasattr(event, 'error') and event.error:
+        if hasattr(event, "error") and event.error:
             print(f"Error: {event.error}")
 
         if event.is_final_response():
@@ -147,7 +144,7 @@ async def test_hosting_agent_local():
                         print(part.text)
             else:
                 print("No content in final response")
-                if hasattr(event, 'error') and event.error:
+                if hasattr(event, "error") and event.error:
                     print(f"Error details: {event.error}")
 
 

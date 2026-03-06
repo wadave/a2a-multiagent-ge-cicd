@@ -59,4 +59,3 @@ gcloud run services add-iam-policy-binding $SERVICE_NAME \
     --role="roles/run.invoker" \
     --region="$LOCATION"
 ```
-

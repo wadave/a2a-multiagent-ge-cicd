@@ -21,8 +21,6 @@ async def test_weather_mcp_list_tools():
 async def test_weather_mcp_get_forecast_by_city():
     """Verify get_forecast_by_city returns forecast data for New York, NY."""
     async with Client(WEATHER_MCP_URL) as client:
-        result = await client.call_tool(
-            "get_forecast_by_city", {"city": "New York", "state": "NY"}
-        )
+        result = await client.call_tool("get_forecast_by_city", {"city": "New York", "state": "NY"})
         assert len(result) > 0
         assert result[0].text

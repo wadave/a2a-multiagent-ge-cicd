@@ -67,6 +67,7 @@ class TestOrchestratorAgentRegistration:
                 remote_agent_addresses=[],
                 http_client=AsyncMock(),
             )
+
         return asyncio.run(_create_orchestrator())
 
     @pytest.fixture
@@ -135,6 +136,7 @@ class TestOrchestratorAgentListing:
     @pytest.fixture
     def orchestrator_with_agents(self):
         """Create an orchestrator with registered agents."""
+
         async def _create_with_agents():
             orchestrator = AdkOrchestratorAgent(
                 remote_agent_addresses=[],
@@ -156,6 +158,7 @@ class TestOrchestratorAgentListing:
                 orchestrator.register_agent_card(card)
 
             return orchestrator
+
         return asyncio.run(_create_with_agents())
 
     @pytest.mark.asyncio
@@ -188,11 +191,13 @@ class TestOrchestratorStateManagement:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
+
         async def _create_orchestrator():
             return AdkOrchestratorAgent(
                 remote_agent_addresses=[],
                 http_client=AsyncMock(),
             )
+
         return asyncio.run(_create_orchestrator())
 
     def test_check_state_no_active_agent(self, orchestrator):
@@ -234,11 +239,13 @@ class TestOrchestratorAgentCreation:
     @pytest.fixture
     def orchestrator(self):
         """Create an orchestrator instance."""
+
         async def _create_orchestrator():
             return AdkOrchestratorAgent(
                 remote_agent_addresses=[],
                 http_client=AsyncMock(),
             )
+
         return asyncio.run(_create_orchestrator())
 
     def test_create_agent(self, orchestrator):
@@ -255,9 +262,9 @@ class TestOrchestratorAgentCreation:
 
         tool_names = []
         for tool in agent.tools:
-            if hasattr(tool, '__name__'):
+            if hasattr(tool, "__name__"):
                 tool_names.append(tool.__name__)
-            elif hasattr(tool, 'name'):
+            elif hasattr(tool, "name"):
                 tool_names.append(tool.name)
 
         assert len(tool_names) > 0
@@ -269,6 +276,7 @@ class TestOrchestratorInstructionGeneration:
     @pytest.fixture
     def orchestrator_with_agents(self):
         """Create an orchestrator with agents."""
+
         async def _create_with_agents():
             orchestrator = AdkOrchestratorAgent(
                 remote_agent_addresses=[],
@@ -289,6 +297,7 @@ class TestOrchestratorInstructionGeneration:
             orchestrator.register_agent_card(card)
 
             return orchestrator
+
         return asyncio.run(_create_with_agents())
 
     def test_root_instruction_contains_agents(self, orchestrator_with_agents):

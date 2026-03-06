@@ -46,7 +46,9 @@ if not project_number or not engine_id:
 
 # Convert to streaming URL
 base_url = f"https://{location}-aiplatform.googleapis.com"
-url_path = f"/v1/projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+url_path = (
+    f"/v1/projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+)
 
 logger.info("Load Test Configuration:")
 logger.info(f"  Project Number: {project_number}")
@@ -176,9 +178,7 @@ class HostingAgentUser(HttpUser):
                                     if "code" in event_data and event_data["code"] >= 400:
                                         has_error = True
                                         error_msg = event_data.get("message", "Unknown error")
-                                        logger.error(
-                                            f"Error in {category} query: {error_msg}"
-                                        )
+                                        logger.error(f"Error in {category} query: {error_msg}")
                                         response.failure(f"Error: {error_msg}")
                                         return
                             except json.JSONDecodeError:
@@ -196,9 +196,7 @@ class HostingAgentUser(HttpUser):
                     else:
                         logger.warning(f"Failed {category} query: {message[:50]}...")
                 else:
-                    logger.error(
-                        f"Unexpected status {response.status_code} for {category} query"
-                    )
+                    logger.error(f"Unexpected status {response.status_code} for {category} query")
                     response.failure(f"Status {response.status_code}")
 
         except Exception as e:

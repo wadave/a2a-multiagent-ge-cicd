@@ -35,8 +35,8 @@ import tomllib
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import vertexai
-from vertexai import agent_engines
 from dotenv import load_dotenv
+from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import A2aAgent
 
 from a2a_agents.cocktail_agent.cocktail_agent_card import cocktail_agent_card
@@ -100,16 +100,16 @@ def deploy_agent(
     existing_agents,
 ):
     """Deploy or update an A2A agent using the A2aAgent template."""
-    a2a_agent = A2aAgent(
-        agent_card=agent_card, agent_executor_builder=executor_builder
-    )
+    a2a_agent = A2aAgent(agent_card=agent_card, agent_executor_builder=executor_builder)
 
     env_vars = {"PROJECT_ID": project_id, "LOCATION": location, "BUCKET": bucket_name}
     env_vars.update(extra_env_vars)
 
     config = _build_config(
-        display_name, a2a_agent.agent_card.description,
-        service_account, env_vars,
+        display_name,
+        a2a_agent.agent_card.description,
+        service_account,
+        env_vars,
         requirements=requirements,
     )
 
@@ -166,8 +166,10 @@ def deploy_adk_agent(
     env_vars.update(extra_env_vars)
 
     config = _build_config(
-        display_name, agent_engine.description,
-        service_account, env_vars,
+        display_name,
+        agent_engine.description,
+        service_account,
+        env_vars,
         requirements=requirements,
     )
 
@@ -213,7 +215,9 @@ def main():
     wea_mcp_url = os.environ.get("WEA_MCP_SERVER_URL")
 
     if not project_id or not service_account or not ct_mcp_url or not wea_mcp_url:
-        logger.error("Missing required environment variables (PROJECT_ID, APP_SERVICE_ACCOUNT, etc.)")
+        logger.error(
+            "Missing required environment variables (PROJECT_ID, APP_SERVICE_ACCOUNT, etc.)"
+        )
         sys.exit(1)
 
     vertexai.init(project=project_id, location=location, staging_bucket=f"gs://{bucket_name}")

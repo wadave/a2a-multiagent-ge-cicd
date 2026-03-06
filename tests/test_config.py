@@ -34,6 +34,7 @@ Optional environment variables (with sensible defaults or derived values):
     CT_AGENT_URL: Cocktail Agent A2A URL (for hosting agent sub-agents)
     WEA_AGENT_URL: Weather Agent A2A URL (for hosting agent sub-agents)
 """
+
 import os
 from pathlib import Path
 
