@@ -258,7 +258,7 @@ The agents interact with the following MCP servers:
 │   ├── pr_checks.yaml            #   PR validation (unit + integration tests)
 │   ├── staging.yaml              #   Staging deployment (on push to staging)
 │   └── deploy-to-prod.yaml       #   Production deployment (manual approval)
-├── asset/                        # Architecture diagrams, screenshots
+├── assets/                       # Architecture diagrams, screenshots
 ├── deployment/
 │   ├── deploy_agents.py          # Python script to deploy all agents
 │   └── terraform/                # Terraform IaC for infrastructure
@@ -270,15 +270,19 @@ The agents interact with the following MCP servers:
 │       ├── github.tf             #   GitHub connection + repository
 │       ├── iam.tf                #   IAM role assignments
 │       ├── locals.tf             #   Agent definitions, service lists
-│       ├── mcp_iam.tf            #   MCP server IAM permissions
+│       ├── model_armor.tf        #   Model Armor configuration
 │       ├── providers.tf          #   Provider versions
-│       ├── service.tf            #   Agent Engine placeholder
 │       ├── service_accounts.tf   #   Service accounts (CICD + app)
 │       ├── storage.tf            #   GCS buckets for logs
 │       ├── telemetry.tf          #   BigQuery telemetry
-│       └── variables.tf          #   Input variables
-├── scripts/
-│   └── deploy_agent.py           # CLI tool to deploy individual agents
+│       ├── variables.tf          #   Input variables
+│       ├── modules/              #   Reusable Terraform modules
+│       │   ├── gemini_enterprise_oauth/
+│       │   └── gemini_enterprise_agent_engine_register/
+│       └── shells/               #   GE registration + MCP services
+│           ├── gemini_enterprise_registration.tf
+│           ├── mcp_servers.tf    #   MCP Cloud Run service definitions
+│           └── mcp_iam.tf        #   MCP server IAM permissions
 ├── src/
 │   ├── a2a_agents/               # Agent source code (workspace package)
 │   │   ├── common/               #   Shared executors, auth utilities
@@ -295,11 +299,10 @@ The agents interact with the following MCP servers:
 ├── tests/
 │   ├── test_config.py            # Shared test configuration
 │   ├── test_utils.py             # Shared test utilities
-│   ├── run_all_tests.py          # Master test runner
 │   ├── conftest.py               # Adds src/ to sys.path
-│   ├── unit/                     # Unit tests (agent cards, servers, logic)
-│   ├── integration/              # Integration tests (local + remote agents)
-│   ├── eval/                     # Evaluation suite (evalsets, config)
+│   ├── unit/                     # Unit tests (agent cards, servers, orchestrator logic)
+│   ├── integration/              # Integration tests (local + remote agents, MCP servers)
+│   ├── eval/                     # Evaluation suite (evalsets, LLM scoring)
 │   └── load_test/                # Locust load tests
 ├── .env.example                  # Environment variable template
 ├── pyproject.toml
@@ -1127,11 +1130,9 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 
 ## Additional Resources
 
-- **[CICD_CONFIGURATION.md](deployment/CICD_CONFIGURATION.md)** - Detailed CI/CD configuration guide
-- **[FRONTEND_DEPLOYMENT.md](FRONTEND_DEPLOYMENT.md)** - Frontend deployment guide
-- **[CICD_UPDATES_SUMMARY.md](CICD_UPDATES_SUMMARY.md)** - Summary of CI/CD updates
+- **[docs/design.md](docs/design.md)** - Software Design Document (architecture, security, deployment)
+- **[docs/cicd_strategy.md](docs/cicd_strategy.md)** - CI/CD pipeline architecture and tooling rationale
 - **[tests/README.md](tests/README.md)** - Testing guide and test framework docs
-- **[tests/MIGRATION_SUMMARY.md](tests/MIGRATION_SUMMARY.md)** - Test consolidation summary
 
 ---
 
