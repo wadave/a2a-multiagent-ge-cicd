@@ -183,14 +183,34 @@
 ---
 
 ## 10. Testing Strategy
+This section outlines the foundational verifications required for functional correctness, as well as the advanced enterprise-grade resilience & security testing methodologies necessary for production deployment.
+
+### 10.1 Functional & Integration Testing
 - **Unit Testing**: Testing individual agent cards, functions, and logic boundaries natively using `pytest` without invoking network calls. Executed in CI via `pr_checks.yaml` on every pull request.
 - **Integration Testing**: Testing local and remote agents using A2A mocking/stubbing or hitting staging endpoints securely. Runs post-deploy in the `staging.yaml` pipeline against the staging project.
 - **End-to-End Testing**: Validating the chain from the UI to the actual MCP responses. Executed manually or via scheduled pipeline against the staging environment.
-- **LLM-based Evaluation Scoring**:
-  - **Mechanism**: Utilizes a scoring rubric interpreted by a Gemini model to evaluate agent responses for relevance, helpfulness, and tool routing accuracy. The rubric and test cases are maintained in [`tests/eval/`](../tests/eval/).
-  - **Flex Tier Integration**: Optimized for cost using Google's **Flex PayGo** (Flex Tier) with specific HTTP headers (`X-Vertex-AI-LLM-Request-Type: shared`, `X-Vertex-AI-LLM-Shared-Request-Type: flex`).
-  - **Verified Configuration**: Successfully verified using the `gemini-3-flash-preview` model on the `global` endpoint.
 - **Quality Metrics**: Maintain code linting standards utilizing `ruff` (configured in `pyproject.toml`) and enforce passing tests prior to PR merge via `pr_checks.yaml`.
+
+### 10.2 Resilience & Security Testing
+To ensure the system can withstand degraded conditions and adversarial attacks, the following advanced methodologies are required:
+
+- **Failure Injection (Chaos Engineering)**: Simulating real-world outages to ensure graceful degradation.
+  - *Network Faults*: Artificially introducing latency or dropping packets to downstream external APIs (e.g., TheCocktailDB) to validate that the HTTP Circuit Breakers trip correctly and return a `503 Service Unavailable` instead of hanging or cascading failures upstream to the Host Agent.
+  - *Dependency Outages*: Shutting down a regional Cloud Run MCP server to ensure the Agent Engine Host correctly handles the failure, ideally routing to a fallback region (if a multi-cluster topology is implemented).
+- **Red Teaming (Penetration Testing)**:
+  - *Adversarial Prompting*: Dedicated exercises attempting to jailbreak the Host Agent, bypass system instructions, or coerce the agent into unauthorized tool invocations.
+  - *Model Armor Validation*: Verifying that Google Cloud Model Armor successfully intercepts and sanitizes PII/sensitive data before it leaves the orchestrator.
+- **Disaster Recovery (DR) Validation**:
+  - *Infrastructure Restoration Drill*: Periodically deleting a staging environment to measure the Recovery Time Objective (RTO) required for Terraform to completely rebuild the infrastructure shell.
+  - *Failover Exercises*: If the multi-region topology (Section 16.1) is adopted, intentionally failing the primary GKE cluster to validate that the Global External Application Load Balancer successfully reroutes traffic to the secondary cluster.
+- **Backup & Restore Testing (State Data)**:
+  - *Limitation Context*: Current conversational memory relies on `VertexAiSessionService`, which acts as a highly-available state cache but lacks enterprise Point-in-Time Recovery (PITR) or automated snapshotting.
+  - *Future State Validation*: Upon migrating session state to a formal database (see Section 15: Schema Evolution), rigorous drills involving restoring corrupted tables from automated backups, validating snapshot integrity, and testing cross-region asynchronous replication lags must be executed.
+
+### 10.3 LLM-based Evaluation Scoring
+- **Mechanism**: Utilizes a scoring rubric interpreted by a Gemini model to evaluate agent responses for relevance, helpfulness, and tool routing accuracy. The rubric and test cases are maintained in [`tests/eval/`](../tests/eval/).
+- **Flex Tier Integration**: Optimized for cost using Google's **Flex PayGo** (Flex Tier) with specific HTTP headers (`X-Vertex-AI-LLM-Request-Type: shared`, `X-Vertex-AI-LLM-Shared-Request-Type: flex`).
+- **Verified Configuration**: Successfully verified using the `gemini-3-flash-preview` model on the `global` endpoint.
 
 ---
 
@@ -530,21 +550,98 @@ To automate this configuration within an SDLC pipeline, Google Cloud provides tw
 
 ### 16.2 Gemini Enterprise Integration Resiliency
 
-Organizations utilizing Gemini Enterprise as the frontline portal often ask if agents deployed securely across a multi-region GKE perimeter can still be registered via the Agent-to-Agent (A2A) protocol. The answer is **yes**. This GKE active-active topology works perfectly with Gemini Enterprise.
+Organizations utilizing Gemini Enterprise as the frontline portal often ask if agents deployed on GKE can be registered with Gemini Enterprise. The current project uses an **ADK root agent on Agent Engine**, which is registered via the `adk_agent_definition` path requiring a `provisioned_reasoning_engine` resource name. However, **Agent Engine is regional** — it runs in a single region and cannot span multiple regions, making it a single point of failure in a multi-region topology. This defeats the purpose of the GKE active-active failover described in Section 16.1.
 
-This holds true for **both ADK Root Agents and native A2A Root Agents**.
+The recommended approach for enterprise resilience is to **convert the ADK root agent to a native A2A agent** and deploy it directly to GKE, where it benefits from multi-region failover via Global Load Balancing.
 
-The core strength of the A2A Registration process is that **Gemini Enterprise does not know, or care, what underlying infrastructure the agent runs on**. Gemini Enterprise acts purely as a REST client. When an agent is registered, Gemini Enterprise strictly requires:
-1.  **The Agent Card (Metadata):** The JSON definition dictating the multi-region agent's intents and capabilities.
-2.  **A Single URL:** The HTTP streaming endpoint representing the agent boundary.
+#### Why the ADK Root Agent on Agent Engine Cannot Handle Failover
 
-#### End-to-End Failover Integration
-When a multi-region GKE cluster is secured behind the Global HTTP(S) Load Balancer, Google Cloud assigns a single SSL domain name (e.g., `https://my-multi-agent.corp.internal`). This single URL is provided to Gemini Enterprise during registration.
+The ADK agent registration path in Gemini Enterprise uses the `adk_agent_definition` with a `provisioned_reasoning_engine` field pointing to a specific regional Reasoning Engine resource:
 
-1.  Gemini Enterprise transmits the user's prompt (with an attached OIDC authorization token) to the load balancer at `https://my-multi-agent.corp.internal`.
-2.  The Global Load Balancer receives the request and transparently routes it to the healthiest, nearest GKE cluster (e.g., `us-east4`).
-3.  Gemini Enterprise ingests the Server-Sent Event (SSE) response stream.
-4.  **Disaster Recovery Scenario:** If `us-east4` suffers a localized failure, any active SSE streams to that region will terminate. The Load Balancer then routes all **subsequent** Gemini Enterprise requests to the backup cluster in `us-central1`. Gemini Enterprise re-establishes the SSE connection transparently on the next request. Session continuity depends on cross-region session state replication (see Section 16.1).
+```json
+{
+  "adk_agent_definition": {
+    "provisioned_reasoning_engine": {
+      "reasoning_engine": "projects/{project}/locations/us-central1/reasoningEngines/{id}"
+    }
+  }
+}
+```
+
+This creates two fundamental limitations:
+1.  **Regional lock-in**: The Reasoning Engine resource exists in exactly one region. If that region goes down, the registered agent is unreachable.
+2.  **No URL-based routing**: Gemini Enterprise communicates with the agent via internal Vertex AI platform infrastructure — there is no HTTP URL to point at a Global Load Balancer.
+
+#### Converting the ADK Root Agent to an A2A Agent
+
+By converting the root agent to a native A2A agent, it can be deployed to GKE and registered directly with Gemini Enterprise via the [A2A agent registration path](https://docs.cloud.google.com/gemini/enterprise/docs/register-and-manage-an-a2a-agent), which accepts an **HTTP endpoint URL** rather than a Reasoning Engine resource name. This enables multi-region deployment behind a Global Load Balancer.
+
+##### What the Conversion Involves
+
+The current ADK root agent (`LlmAgent` with `RemoteA2aAgent` sub-agents) would be refactored to:
+
+1.  **Wrap the ADK agent in an A2A server**: Use the `a2a-sdk` to expose the agent as a standalone A2A-compliant HTTP service, with an agent card at `/.well-known/agent.json` and message handling via JSON-RPC (`message/send`, `message/stream`).
+2.  **Implement an `AgentExecutor`**: Similar to the existing `AdkOrchestratorAgentExecutor`, bridge between incoming A2A protocol messages and the internal ADK `Runner`.
+3.  **Self-manage session state**: Replace `VertexAiSessionService` with a persistent, cross-region store (e.g., Firestore, Cloud Spanner, or Memorystore) since Agent Engine's managed session service is no longer available.
+4.  **Containerize and deploy to GKE**: Package the A2A agent as a Docker container with health check endpoints, deploy to multi-region GKE clusters with appropriate HPA scaling.
+
+##### Architecture
+
+```
+Gemini Enterprise
+    │
+    │  (HTTPS — A2A JSON-RPC, with OIDC auth token)
+    │
+    ▼
+Global External Application Load Balancer
+    │  (health-checked, latency-based routing)
+    │
+    ├──────────────────────────┐
+    ▼                          ▼
+GKE Cluster (us-central1)    GKE Cluster (us-east4)
+┌─────────────────────┐      ┌─────────────────────┐
+│ A2A Root Agent      │      │ A2A Root Agent      │
+│  - /.well-known/    │      │  - /.well-known/    │
+│    agent.json       │      │    agent.json       │
+│  - ADK Runner       │      │  - ADK Runner       │
+│  - RemoteA2aAgent   │      │  - RemoteA2aAgent   │
+│    sub-agents       │      │    sub-agents       │
+└────────┬────────────┘      └────────┬────────────┘
+         │                            │
+         │  (A2A JSON-RPC over HTTPS) │
+         ▼                            ▼
+    GKE Sub-Agents              GKE Sub-Agents
+    (Cocktail, Weather)         (Cocktail, Weather)
+```
+
+##### Key Differences from the Current Architecture
+
+| Aspect | Current (ADK on Agent Engine) | Target (A2A on GKE) |
+|---|---|---|
+| Registration path | `adk_agent_definition` + `provisioned_reasoning_engine` | A2A agent registration with HTTP endpoint URL |
+| Root agent location | Agent Engine (single region) | GKE (multi-region behind Global LB) |
+| GE → Agent transport | Internal Vertex AI platform | HTTPS (direct HTTP call to Global LB) |
+| Multi-region failover | **Not supported** — Agent Engine is regional | **Supported** — Global LB routes to healthy cluster |
+| Session management | `VertexAiSessionService` (managed) | Self-managed cross-region store (Firestore, Spanner) |
+| Auth | Platform-managed IAM | OIDC token validation at the GKE ingress |
+| Infrastructure control | Limited (managed platform) | Full (Kubernetes-native scaling, health checks, HPA) |
+
+#### Multi-Region Failover with Gemini Enterprise
+
+When the A2A root agent is deployed to multi-region GKE clusters behind a Global External Application Load Balancer:
+
+1.  **Registration**: Gemini Enterprise registers the A2A agent with the Global LB URL (e.g., `https://my-root-agent.corp.internal`).
+2.  **Active-Active Routing**: The Global LB routes Gemini Enterprise requests to the nearest healthy GKE cluster based on latency.
+3.  **Failover Event**: If a region fails, the LB automatically reroutes all subsequent requests to the surviving cluster. No re-registration with Gemini Enterprise is required — the URL remains the same.
+4.  **Session Continuity**: Cross-region session state replication (via Firestore or Spanner) ensures users retain their conversation context after failover (see Section 16.1).
+
+#### Protocol Summary
+
+| Hop | From | To | Protocol | Transport |
+|---|---|---|---|---|
+| 1 | Gemini Enterprise | A2A Root Agent (via Global LB) | A2A (JSON-RPC) | HTTPS |
+| 2 | A2A Root Agent | GKE Sub-Agent | A2A (JSON-RPC) | HTTPS |
+| 3 | GKE Sub-Agent | MCP Server / External API | MCP (StreamableHTTP) or REST | HTTPS |
 
 ---
 
@@ -602,3 +699,4 @@ To close the loop, the architecture must support **Webhooks/Callbacks**.
   - [v1.0.7, 2026-03-08, Added Future Architectural Extensions covering Plugin Patterns, Event-Driven Pub/Sub, and Webhooks]
   - [v1.0.8, 2026-03-08, Added Enterprise Reliability & Distributed Topology section summarizing GKE multi-region failovers and Gemini Enterprise integration]
   - [v1.0.9, 2026-03-08, Reorganized into Part I (Current Architecture) and Part II (Future Roadmap); renumbered sections; added status callouts to future sections; normalized tone; moved observability enhancements to roadmap]
+  - [v1.1.0, 2026-03-08, Rewrote Section 16.2 — Agent Engine is regional and cannot support multi-region failover; recommended converting ADK root agent to A2A agent for direct GKE deployment and Gemini Enterprise registration via A2A path; added multi-region architecture diagram and protocol summary]
