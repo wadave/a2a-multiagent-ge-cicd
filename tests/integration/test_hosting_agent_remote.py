@@ -77,7 +77,7 @@ async def send_message_and_wait(
         return False, "Timeout waiting for response"
 
 
-async def test_agent(agent_url: str, agent_name: str, test_cases: list):
+async def _run_agent_tests(agent_url: str, agent_name: str, test_cases: list):
     """Test a deployed agent with multiple test cases."""
     print(f"\n{'=' * 80}")
     print(f"Testing: {agent_name}")
@@ -157,7 +157,7 @@ async def main():
         ("What's in a Mojito?", "cocktail"),
     ]
 
-    passed = await test_agent(HOSTING_AGENT_URL, "Hosting Agent (A2A)", test_cases)
+    passed = await _run_agent_tests(HOSTING_AGENT_URL, "Hosting Agent (A2A)", test_cases)
 
     print(f"\n{'=' * 80}")
     print("OVERALL RESULT")

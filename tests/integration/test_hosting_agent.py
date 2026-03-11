@@ -19,6 +19,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add tests directory to path
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
@@ -34,6 +36,8 @@ from test_utils import print_test_summary, test_adk_agent
 
 async def test_hosting_agent_weather():
     """Test the Hosting Agent with a weather query."""
+    if not HOSTING_AGENT_RESOURCE_NAME or not PROJECT_ID:
+        pytest.skip("HOSTING_AGENT_ID and PROJECT_ID must be configured")
     success, response = await test_adk_agent(
         agent_resource_name=HOSTING_AGENT_RESOURCE_NAME,
         query="weather in Dallas, TX",
@@ -41,11 +45,14 @@ async def test_hosting_agent_weather():
         location=LOCATION,
         user_id=DEFAULT_USER_ID,
     )
+    assert success, "Hosting Agent weather (Dallas) test failed"
     return success
 
 
 async def test_hosting_agent_cocktail():
     """Test the Hosting Agent with a cocktail query."""
+    if not HOSTING_AGENT_RESOURCE_NAME or not PROJECT_ID:
+        pytest.skip("HOSTING_AGENT_ID and PROJECT_ID must be configured")
     success, response = await test_adk_agent(
         agent_resource_name=HOSTING_AGENT_RESOURCE_NAME,
         query="what's in a margarita?",
@@ -53,11 +60,14 @@ async def test_hosting_agent_cocktail():
         location=LOCATION,
         user_id=DEFAULT_USER_ID,
     )
+    assert success, "Hosting Agent cocktail (Margarita) test failed"
     return success
 
 
 async def test_hosting_agent_random_cocktail():
     """Test the Hosting Agent with a random cocktail query."""
+    if not HOSTING_AGENT_RESOURCE_NAME or not PROJECT_ID:
+        pytest.skip("HOSTING_AGENT_ID and PROJECT_ID must be configured")
     success, response = await test_adk_agent(
         agent_resource_name=HOSTING_AGENT_RESOURCE_NAME,
         query="list a random cocktail",
@@ -65,11 +75,14 @@ async def test_hosting_agent_random_cocktail():
         location=LOCATION,
         user_id=DEFAULT_USER_ID,
     )
+    assert success, "Hosting Agent cocktail (Random) test failed"
     return success
 
 
 async def test_hosting_agent_houston_weather():
     """Test the Hosting Agent with Houston weather query."""
+    if not HOSTING_AGENT_RESOURCE_NAME or not PROJECT_ID:
+        pytest.skip("HOSTING_AGENT_ID and PROJECT_ID must be configured")
     success, response = await test_adk_agent(
         agent_resource_name=HOSTING_AGENT_RESOURCE_NAME,
         query="weather in Houston, TX",
@@ -77,6 +90,7 @@ async def test_hosting_agent_houston_weather():
         location=LOCATION,
         user_id=DEFAULT_USER_ID,
     )
+    assert success, "Hosting Agent weather (Houston) test failed"
     return success
 
 
@@ -89,23 +103,35 @@ async def main():
     results = []
 
     # Test weather queries
-    dallas_passed = await test_hosting_agent_weather()
+    try:
+        dallas_passed = await test_hosting_agent_weather()
+    except AssertionError:
+        dallas_passed = False
     results.append(("Hosting Agent - Weather (Dallas)", dallas_passed))
 
     await asyncio.sleep(2)
 
-    houston_passed = await test_hosting_agent_houston_weather()
+    try:
+        houston_passed = await test_hosting_agent_houston_weather()
+    except AssertionError:
+        houston_passed = False
     results.append(("Hosting Agent - Weather (Houston)", houston_passed))
 
     await asyncio.sleep(2)
 
     # Test cocktail queries
-    margarita_passed = await test_hosting_agent_cocktail()
+    try:
+        margarita_passed = await test_hosting_agent_cocktail()
+    except AssertionError:
+        margarita_passed = False
     results.append(("Hosting Agent - Cocktail (Margarita)", margarita_passed))
 
     await asyncio.sleep(2)
 
-    random_passed = await test_hosting_agent_random_cocktail()
+    try:
+        random_passed = await test_hosting_agent_random_cocktail()
+    except AssertionError:
+        random_passed = False
     results.append(("Hosting Agent - Cocktail (Random)", random_passed))
 
     # Print summary

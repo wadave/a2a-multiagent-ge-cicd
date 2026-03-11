@@ -180,13 +180,13 @@ async def test_adk_agent(
     print(f"✓ Connected to agent: {remote_agent.display_name}")
 
     # Create a session
-    session = await remote_agent.async_create_session(user_id=user_id)
+    session = remote_agent.create_session(user_id=user_id)
     session_id = session["id"] if isinstance(session, dict) else session.id
     print(f"✓ Session created: {session_id}")
 
     # Stream query
     events = []
-    async for event in remote_agent.async_stream_query(
+    for event in remote_agent.stream_query(
         user_id=user_id,
         session_id=session_id,
         message=query,

@@ -19,6 +19,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add tests directory to path
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
@@ -31,8 +33,7 @@ async def test_frontend_ui():
 
     frontend_url = FRONTEND_URL
     if not frontend_url:
-        print("ERROR: FRONTEND_URL not configured. Set PROJECT_NUMBER env var.")
-        return False
+        pytest.skip("FRONTEND_URL not configured. Set PROJECT_NUMBER env var.")
 
     print("=" * 80)
     print("TESTING DEPLOYED FRONTEND UI")
@@ -54,21 +55,24 @@ async def test_frontend_ui():
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(frontend_url)
-            if response.status_code == 200:
-                print(f"✓ Frontend is accessible (HTTP {response.status_code})")
-                print(f"✓ Frontend deployed at: {frontend_url}")
-                return True
-            else:
-                print(f"✗ Frontend returned HTTP {response.status_code}")
-                return False
+            assert response.status_code == 200, f"Frontend returned HTTP {response.status_code}"
+            print(f"✓ Frontend is accessible (HTTP {response.status_code})")
+            print(f"✓ Frontend deployed at: {frontend_url}")
+            return True
+        except AssertionError:
+            raise
         except Exception as e:
-            print(f"✗ Error accessing frontend: {e}")
-            return False
+            raise AssertionError(f"Error accessing frontend: {e}") from e
 
 
 async def main():
     """Run frontend test."""
-    success = await test_frontend_ui()
+    try:
+        await test_frontend_ui()
+        success = True
+    except Exception as e:
+        print(f"✗ {e}")
+        success = False
 
     print("\n" + "=" * 80)
     if success:

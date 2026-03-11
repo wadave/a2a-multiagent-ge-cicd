@@ -19,6 +19,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add tests directory to path
 tests_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(tests_dir))
@@ -37,6 +39,8 @@ from test_utils import print_test_summary, test_a2a_agent
 
 async def test_cocktail_agent():
     """Test the Cocktail Agent with a sample query."""
+    if not COCKTAIL_AGENT_ID or not PROJECT_NUMBER:
+        pytest.skip("COCKTAIL_AGENT_ID and PROJECT_NUMBER must be configured")
     success, response = await test_a2a_agent(
         agent_id=COCKTAIL_AGENT_ID,
         agent_name="Cocktail Agent",
@@ -47,11 +51,14 @@ async def test_cocktail_agent():
         poll_attempts=DEFAULT_POLL_ATTEMPTS,
         poll_interval=POLL_INTERVAL,
     )
+    assert success, "Cocktail Agent (Margarita) test failed"
     return success
 
 
 async def test_weather_agent():
     """Test the Weather Agent with a sample query."""
+    if not WEATHER_AGENT_ID or not PROJECT_NUMBER:
+        pytest.skip("WEATHER_AGENT_ID and PROJECT_NUMBER must be configured")
     success, response = await test_a2a_agent(
         agent_id=WEATHER_AGENT_ID,
         agent_name="Weather Agent",
@@ -62,11 +69,14 @@ async def test_weather_agent():
         poll_attempts=DEFAULT_POLL_ATTEMPTS,
         poll_interval=POLL_INTERVAL,
     )
+    assert success, "Weather Agent (San Francisco) test failed"
     return success
 
 
 async def test_cocktail_random():
     """Test the Cocktail Agent with a random cocktail query."""
+    if not COCKTAIL_AGENT_ID or not PROJECT_NUMBER:
+        pytest.skip("COCKTAIL_AGENT_ID and PROJECT_NUMBER must be configured")
     success, response = await test_a2a_agent(
         agent_id=COCKTAIL_AGENT_ID,
         agent_name="Cocktail Agent (Random)",
@@ -77,11 +87,14 @@ async def test_cocktail_random():
         poll_attempts=DEFAULT_POLL_ATTEMPTS,
         poll_interval=POLL_INTERVAL,
     )
+    assert success, "Cocktail Agent (Random) test failed"
     return success
 
 
 async def test_weather_houston():
     """Test the Weather Agent with Houston weather query."""
+    if not WEATHER_AGENT_ID or not PROJECT_NUMBER:
+        pytest.skip("WEATHER_AGENT_ID and PROJECT_NUMBER must be configured")
     success, response = await test_a2a_agent(
         agent_id=WEATHER_AGENT_ID,
         agent_name="Weather Agent (Houston)",
@@ -92,6 +105,7 @@ async def test_weather_houston():
         poll_attempts=DEFAULT_POLL_ATTEMPTS,
         poll_interval=POLL_INTERVAL,
     )
+    assert success, "Weather Agent (Houston) test failed"
     return success
 
 
@@ -104,25 +118,37 @@ async def main():
     results = []
 
     # Test Cocktail Agent
-    cocktail_passed = await test_cocktail_agent()
+    try:
+        cocktail_passed = await test_cocktail_agent()
+    except AssertionError:
+        cocktail_passed = False
     results.append(("Cocktail Agent - Margarita", cocktail_passed))
 
     await asyncio.sleep(2)
 
     # Test Weather Agent
-    weather_passed = await test_weather_agent()
+    try:
+        weather_passed = await test_weather_agent()
+    except AssertionError:
+        weather_passed = False
     results.append(("Weather Agent - San Francisco", weather_passed))
 
     await asyncio.sleep(2)
 
     # Test Cocktail Agent with random query
-    cocktail_random_passed = await test_cocktail_random()
+    try:
+        cocktail_random_passed = await test_cocktail_random()
+    except AssertionError:
+        cocktail_random_passed = False
     results.append(("Cocktail Agent - Random", cocktail_random_passed))
 
     await asyncio.sleep(2)
 
     # Test Weather Agent with Houston
-    weather_houston_passed = await test_weather_houston()
+    try:
+        weather_houston_passed = await test_weather_houston()
+    except AssertionError:
+        weather_houston_passed = False
     results.append(("Weather Agent - Houston", weather_houston_passed))
 
     # Print summary
